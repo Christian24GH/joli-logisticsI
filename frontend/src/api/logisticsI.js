@@ -30,7 +30,7 @@ export const logisticsI = {
             equipment: `${backendUri}/api/equipment`,
             equipmentSearch: `${backendUri}/api/equipment/search`,
             equipmentAdd: `${backendUri}/api/equipment/add`,
-                equipmentUpdate: `${backendUri}/api/equipment/change/{id}`,
+                equipmentUpdate: `${backendUri}/api/equipment/change/{id}`, 
                 equipmentArchive: `${backendUri}/api/equipment/archive/{id}`,
                 equipmentActivate: `${backendUri}/api/equipment/activate/{id}`,
                 equipmentUpdateStock: `${backendUri}/api/equipment/{id}/update-stock`,
@@ -90,6 +90,24 @@ export const logisticsI = {
             // Order Items Routes
             orderItems: `${backendUri}/api/order-items`,
             orderItemsAdd: `${backendUri}/api/order-items`,
+
+            // Order Reports Routes
+            orderReports: `${backendUri}/api/order-reports`,
+            orderReportAdd: `${backendUri}/api/order-reports`,
+            orderReportUpdate: `${backendUri}/api/order-reports/{id}`,
+            orderReportArchive: `${backendUri}/api/order-reports/{id}/archive`,
+
+            // Received Orders Routes
+            receivedOrders: `${backendUri}/api/received-orders`,
+            receivedOrderAdd: `${backendUri}/api/received-orders`,
+            receivedOrderUpdate: `${backendUri}/api/received-orders/{id}`,
+            receivedOrderArchive: `${backendUri}/api/received-orders/{id}/archive`,
+
+            // Cancel Orders Routes
+            cancelOrders: `${backendUri}/api/cancel-orders`,
+            cancelOrderAdd: `${backendUri}/api/cancel-orders`,
+            cancelOrderUpdate: `${backendUri}/api/cancel-orders/{id}`,
+            cancelOrderArchive: `${backendUri}/api/cancel-orders/{id}/archive`,
 
             // Expense Records Routes
             expenseRecords: `${backendUri}/api/expenses`,

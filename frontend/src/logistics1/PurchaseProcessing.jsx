@@ -13,10 +13,13 @@ const PurchaseProcessing = () => {
     request_id: '',
     supplier_id: '',
     total_amount: '',
-  });
+  }); 
   const [suppliers, setSuppliers] = useState([]);
   const [lowstockRequests, setLowstockRequests] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
+  const [orderReports, setOrderReports] = useState([]);
+  const [receivedOrders, setReceivedOrders] = useState([]);
+  const [cancelOrders, setCancelOrders] = useState([]);
   const [activeSection, setActiveSection] = useState('create'); // 'create', 'approval', 'issue', 'orderList'
 
   // Modal state
@@ -27,6 +30,10 @@ const PurchaseProcessing = () => {
     price: '',
     quantity: '',
     total: '',
+    supplier_email: '',
+    supplier_phone: '',
+    supplier_address: '',
+    supplier_website: '',
   });
 
   // Order modal state
@@ -37,8 +44,11 @@ const PurchaseProcessing = () => {
     quantity: '',
     price_per_unit: '',
     total_price: '',
-    contact_email: '',
-    contact_phone: '',
+    supplier_email: '',
+    supplier_phone: '',
+    supplier_address: '',
+    supplier_website: '',
+    delivery_date: '',
   });
 
   // Fetch initial data
@@ -51,6 +61,9 @@ const PurchaseProcessing = () => {
     fetchSuppliers();
     fetchLowstockRequests();
     fetchOrderItems();
+    fetchOrderReports();
+    fetchReceivedOrders();
+    fetchCancelOrders();
   };
 
   const fetchPurchaseRequests = async () => {
@@ -106,6 +119,48 @@ const PurchaseProcessing = () => {
     } catch (err) {
       console.error('Error fetching order items:', err);
       setError('Failed to fetch order items');
+    }
+  };
+
+  const fetchOrderReports = async () => {
+    setSuccess('');
+    setError('');
+    try {
+      const response = await fetch(logisticsI.backend.api.orderReports);
+      if (!response.ok) throw new Error('Failed to fetch order reports');
+      const data = await response.json();
+      setOrderReports(data || []);
+    } catch (err) {
+      console.error('Error fetching order reports:', err);
+      setError('Failed to fetch order reports');
+    }
+  };
+
+  const fetchReceivedOrders = async () => {
+    setSuccess('');
+    setError('');
+    try {
+      const response = await fetch(logisticsI.backend.api.receivedOrders);
+      if (!response.ok) throw new Error('Failed to fetch received orders');
+      const data = await response.json();
+      setReceivedOrders(data || []);
+    } catch (err) {
+      console.error('Error fetching received orders:', err);
+      setError('Failed to fetch received orders');
+    }
+  };
+
+  const fetchCancelOrders = async () => {
+    setSuccess('');
+    setError('');
+    try {
+      const response = await fetch(logisticsI.backend.api.cancelOrders);
+      if (!response.ok) throw new Error('Failed to fetch cancel orders');
+      const data = await response.json();
+      setCancelOrders(data || []);
+    } catch (err) {
+      console.error('Error fetching cancel orders:', err);
+      setError('Failed to fetch cancel orders');
     }
   };
 
@@ -166,6 +221,10 @@ const PurchaseProcessing = () => {
       price: '',
       quantity: request.quantity,
       total: '',
+      supplier_email: '',
+      supplier_phone: '',
+      supplier_address: '',
+      supplier_website: '',
     });
     setShowModal(true);
   };
@@ -179,6 +238,10 @@ const PurchaseProcessing = () => {
       price: '',
       quantity: '',
       total: '',
+      supplier_email: '',
+      supplier_phone: '',
+      supplier_address: '',
+      supplier_website: '',
     });
   };
 
@@ -190,8 +253,11 @@ const PurchaseProcessing = () => {
       quantity: request.quantity,
       price_per_unit: request.price,
       total_price: request.total_price,
-      contact_email: '',
-      contact_phone: '',
+      supplier_email: request.supplier_email || '',
+      supplier_phone: request.supplier_phone || '',
+      supplier_address: request.supplier_address || '',
+      supplier_website: request.supplier_website || '',
+      delivery_date: '',
     });
     setShowOrderModal(true);
   };
@@ -205,8 +271,11 @@ const PurchaseProcessing = () => {
       quantity: '',
       price_per_unit: '',
       total_price: '',
-      contact_email: '',
-      contact_phone: '',
+      supplier_email: '',
+      supplier_phone: '',
+      supplier_address: '',
+      supplier_website: '',
+      delivery_date: '',
     });
   };
 
@@ -217,6 +286,10 @@ const PurchaseProcessing = () => {
       ...prev,
       supplier_id: supplierId,
       price: selectedSupplier ? String(selectedSupplier.price || '') : '',
+      supplier_email: selectedSupplier ? selectedSupplier.supplier_email || '' : '',
+      supplier_phone: selectedSupplier ? selectedSupplier.supplier_phone || '' : '',
+      supplier_address: selectedSupplier ? selectedSupplier.supplier_address || '' : '',
+      supplier_website: selectedSupplier ? selectedSupplier.supplier_website || '' : '',
     }));
   };
 
@@ -358,8 +431,8 @@ const PurchaseProcessing = () => {
   // Handle submit order
   const handleSubmitOrder = async (e) => {
     e.preventDefault();
-    if (!orderForm.contact_email || !orderForm.contact_phone) {
-      setError('Please fill contact email and phone');
+    if (!orderForm.delivery_date) {
+      setError('Please fill delivery date');
       return;
     }
     setLoading(true);
@@ -375,8 +448,11 @@ const PurchaseProcessing = () => {
           quantity: orderForm.quantity,
           price_per_unit: orderForm.price_per_unit,
           total_price: orderForm.total_price,
-          contact_email: orderForm.contact_email,
-          contact_phone: orderForm.contact_phone,
+          supplier_email: orderForm.supplier_email,
+          supplier_phone: orderForm.supplier_phone,
+          supplier_address: orderForm.supplier_address,
+          supplier_website: orderForm.supplier_website,
+          delivery_date: orderForm.delivery_date,
         }),
       });
 
@@ -446,7 +522,7 @@ const PurchaseProcessing = () => {
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
-            Issue Order
+            Order History
           </button>
           <button
             onClick={() => setActiveSection('orderList')}
@@ -477,7 +553,7 @@ const PurchaseProcessing = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {lowstockRequests.map((request) => (
+                    {lowstockRequests.filter(request => request.status === 'pending').map((request) => (
                       <tr key={request.id} className="hover:bg-gray-50">
                         <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{request.item_name}</td>
                         <td className="py-1 px-2 border-b text-base text-center">{request.quantity}</td>
@@ -492,27 +568,22 @@ const PurchaseProcessing = () => {
                           </span>
                         </td>
                         <td className="py-1 px-2 border-b text-center">
-                          {request.status === 'pending' && (
-                            <div className="flex flex-row space-x-1 justify-center">
-                              <button
-                                onClick={() => openPurchaseModal(request)}
-                                disabled={loading}
-                                className="bg-green-600 text-white px-2 py-1 rounded text-base hover:bg-green-700 disabled:opacity-50 transition duration-200"
-                              >
-                                App
-                              </button>
-                              <button
-                                onClick={() => handleRejectLowstock(request.id)}
-                                disabled={loading}
-                                className="bg-red-600 text-white px-2 py-1 rounded text-base hover:bg-red-700 disabled:opacity-50 transition duration-200"
-                              >
-                                Rej
-                              </button>
-                            </div>
-                          )}
-                          {request.status === 'submitted' && (
-                            <span className="text-blue-600 font-medium text-base block text-center">Waiting for Approval</span>
-                          )}
+                          <div className="flex flex-row space-x-1 justify-center">
+                            <button
+                              onClick={() => openPurchaseModal(request)}
+                              disabled={loading}
+                              className="bg-green-600 text-white px-2 py-1 rounded text-base hover:bg-green-700 disabled:opacity-50 transition duration-200"
+                            >
+                              App
+                            </button>
+                            <button
+                              onClick={() => handleRejectLowstock(request.id)}
+                              disabled={loading}
+                              className="bg-red-600 text-white px-2 py-1 rounded text-base hover:bg-red-700 disabled:opacity-50 transition duration-200"
+                            >
+                              Rej
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -565,22 +636,7 @@ const PurchaseProcessing = () => {
                         </td>
                         <td className="py-1 px-2 border-b text-center">
                           {request.status === 'pending' && (
-                            <div className="flex flex-row space-x-1 justify-center">
-                              <button
-                                onClick={() => handleApproval(request.request_id, 'approved')}
-                                disabled={loading}
-                                className="bg-green-600 text-white px-2 py-1 rounded text-base hover:bg-green-700 disabled:opacity-50 transition duration-200"
-                              >
-                                App
-                              </button>
-                              <button
-                                onClick={() => handleApproval(request.request_id, 'rejected')}
-                                disabled={loading}
-                                className="bg-red-600 text-white px-2 py-1 rounded text-base hover:bg-red-700 disabled:opacity-50 transition duration-200"
-                              >
-                                Rej
-                              </button>
-                            </div>
+                            <span className="text-gray-600 font-medium text-base block text-center">waiting for approval by financial</span>
                           )}
                           {request.status === 'approved' && (
                             <button
@@ -605,58 +661,116 @@ const PurchaseProcessing = () => {
 
         {activeSection === 'issue' && (
           <section>
-            <h2 className="text-2xl font-semibold text-gray-700 mb-4">Issue Purchase Order</h2>
-            <form onSubmit={handleIssueOrder} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <select
-                  value={purchaseOrderForm.request_id}
-                  onChange={(e) => setPurchaseOrderForm({ ...purchaseOrderForm, request_id: e.target.value })}
-                  required
-                  className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select Approved Request</option>
-                  {purchaseRequests
-                    .filter((req) => req.status === 'approved')
-                    .map((req) => (
-                      <option key={req.request_id} value={req.request_id}>
-                        Request ID: {req.request_id}
-                      </option>
-                    ))}
-                </select>
-                <select
-                  value={purchaseOrderForm.supplier_id}
-                  onChange={(e) => setPurchaseOrderForm({ ...purchaseOrderForm, supplier_id: e.target.value })}
-                  required
-                  className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select Supplier</option>
-                  {suppliers.length > 0 ? (
-                    suppliers.map((supplier) => (
-                      <option key={supplier.supplier_id} value={supplier.supplier_id}>
-                        {supplier.supplier_name}
-                      </option>
-                    ))
-                  ) : (
-                    <option disabled>No suppliers available</option>
-                  )}
-                </select>
-                <input
-                  type="number"
-                  placeholder="Total Amount"
-                  value={purchaseOrderForm.total_amount}
-                  onChange={(e) => setPurchaseOrderForm({ ...purchaseOrderForm, total_amount: e.target.value })}
-                  required
-                  className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition duration-200"
-              >
-                {loading ? 'Issuing...' : 'Issue Order'}
-              </button>
-            </form>
+            <h2 className="text-2xl font-semibold text-gray-700 mb-4">Order History</h2>
+
+            {/* Order Reports */}
+            <div className="mb-6">
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">Order Reports</h3>
+              {orderReports.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full bg-white border border-gray-300 table-fixed">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="py-1 px-2 border-b text-base text-center w-16">ID</th>
+                        <th className="py-1 px-2 border-b text-base text-center w-16">Request ID</th>
+                        <th className="py-1 px-2 border-b text-base text-center w-32">Item</th>
+                        <th className="py-1 px-2 border-b text-base text-center w-12">Quantity</th>
+                        <th className="py-1 px-2 border-b text-base text-center w-40">Report Reason</th>
+                        <th className="py-1 px-2 border-b text-base text-center w-24">Reported By</th>
+                        <th className="py-1 px-2 border-b text-base text-center w-24">Date Reported</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orderReports.map((report) => (
+                        <tr key={report.id} className="hover:bg-gray-50">
+                          <td className="py-1 px-2 border-b text-base text-center">{report.id}</td>
+                          <td className="py-1 px-2 border-b text-base text-center">{report.request_id}</td>
+                          <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{report.item_name}</td>
+                          <td className="py-1 px-2 border-b text-base text-center">{report.quantity}</td>
+                          <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{report.report_reason}</td>
+                          <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{report.reported_by}</td>
+                          <td className="py-1 px-2 border-b text-base text-center">{report.date_reported}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-gray-500">No order reports available</p>
+              )}
+            </div>
+
+            {/* Received Orders */}
+            <div className="mb-6">
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">Received Orders</h3>
+              {receivedOrders.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full bg-white border border-gray-300 table-fixed">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="py-1 px-2 border-b text-base text-center w-16">ID</th>
+                        <th className="py-1 px-2 border-b text-base text-center w-16">Request ID</th>
+                        <th className="py-1 px-2 border-b text-base text-center w-32">Item</th>
+                        <th className="py-1 px-2 border-b text-base text-center w-12">Quantity</th>
+                        <th className="py-1 px-2 border-b text-base text-center w-24">Received By</th>
+                        <th className="py-1 px-2 border-b text-base text-center w-24">Received Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {receivedOrders.map((order) => (
+                        <tr key={order.id} className="hover:bg-gray-50">
+                          <td className="py-1 px-2 border-b text-base text-center">{order.id}</td>
+                          <td className="py-1 px-2 border-b text-base text-center">{order.request_id}</td>
+                          <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{order.item_name}</td>
+                          <td className="py-1 px-2 border-b text-base text-center">{order.quantity}</td>
+                          <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{order.received_by}</td>
+                          <td className="py-1 px-2 border-b text-base text-center">{order.received_date}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-gray-500">No received orders available</p>
+              )}
+            </div>
+
+            {/* Cancel Orders */}
+            <div className="mb-6">
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">Cancel Orders</h3>
+              {cancelOrders.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full bg-white border border-gray-300 table-fixed">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="py-1 px-2 border-b text-base text-center w-16">ID</th>
+                        <th className="py-1 px-2 border-b text-base text-center w-16">Request ID</th>
+                        <th className="py-1 px-2 border-b text-base text-center w-32">Item</th>
+                        <th className="py-1 px-2 border-b text-base text-center w-12">Quantity</th>
+                        <th className="py-1 px-2 border-b text-base text-center w-40">Cancel Reason</th>
+                        <th className="py-1 px-2 border-b text-base text-center w-24">Cancelled By</th>
+                        <th className="py-1 px-2 border-b text-base text-center w-24">Date Cancelled</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cancelOrders.map((order) => (
+                        <tr key={order.id} className="hover:bg-gray-50">
+                          <td className="py-1 px-2 border-b text-base text-center">{order.id}</td>
+                          <td className="py-1 px-2 border-b text-base text-center">{order.request_id}</td>
+                          <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{order.item_name}</td>
+                          <td className="py-1 px-2 border-b text-base text-center">{order.quantity}</td>
+                          <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{order.cancel_reason}</td>
+                          <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{order.cancelled_by}</td>
+                          <td className="py-1 px-2 border-b text-base text-center">{order.date_cancelled}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-gray-500">No cancel orders available</p>
+              )}
+            </div>
           </section>
         )}
 
@@ -668,29 +782,36 @@ const PurchaseProcessing = () => {
                 <table className="min-w-full bg-white border border-gray-300 table-fixed">
                   <thead>
                     <tr className="bg-gray-100">
-                      <th className="py-1 px-2 border-b text-base text-center w-16">ID</th>
                       <th className="py-1 px-2 border-b text-base text-center w-16">Request ID</th>
                       <th className="py-1 px-2 border-b text-base text-center w-32">Item</th>
                       <th className="py-1 px-2 border-b text-base text-center w-12">Quantity</th>
                       <th className="py-1 px-2 border-b text-base text-center w-16">Price/Unit</th>
                       <th className="py-1 px-2 border-b text-base text-center w-16">Total Price</th>
-                      <th className="py-1 px-2 border-b text-base text-center w-32">Contact Email</th>
-                      <th className="py-1 px-2 border-b text-base text-center w-24">Contact Phone</th>
-                      <th className="py-1 px-2 border-b text-base text-center w-24">Created At</th>
+                      <th className="py-1 px-2 border-b text-base text-center w-32">Supplier Email</th>
+                      <th className="py-1 px-2 border-b text-base text-center w-24">Supplier Phone</th>
+                      <th className="py-1 px-2 border-b text-base text-center w-24">Delivery Date</th>
+                      <th className="py-1 px-2 border-b text-base text-center w-20">Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {orderItems.map((item) => (
                       <tr key={item.id} className="hover:bg-gray-50">
-                        <td className="py-1 px-2 border-b text-base text-center">{item.order_item_id}</td>
                         <td className="py-1 px-2 border-b text-base text-center">{item.request_id}</td>
                         <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{item.item_name}</td>
                         <td className="py-1 px-2 border-b text-base text-center">{item.quantity}</td>
                         <td className="py-1 px-2 border-b text-base text-center">₱{item.price_per_unit}</td>
                         <td className="py-1 px-2 border-b text-base text-center">₱{item.total_price}</td>
-                        <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{item.contact_email}</td>
-                        <td className="py-1 px-2 border-b text-base text-center">{item.contact_phone}</td>
-                        <td className="py-1 px-2 border-b text-base text-center">{new Date(item.created_at).toLocaleString()}</td>
+                        <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{item.supplier_email}</td>
+                        <td className="py-1 px-2 border-b text-base text-center">{item.supplier_phone}</td>
+                        <td className="py-1 px-2 border-b text-base text-center">{item.date_delivery}</td>
+                        <td className="py-1 px-2 border-b text-center">
+                          {item.status === 'ongoing' && (
+                            <div className="flex space-x-1 justify-center">
+                              <button className="bg-green-600 text-white px-2 py-1 rounded text-base hover:bg-green-700">Received</button>
+                              <button className="bg-red-600 text-white px-2 py-1 rounded text-base hover:bg-red-700">Report</button>
+                            </div>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -785,21 +906,47 @@ const PurchaseProcessing = () => {
               <p className="mb-4"><strong>Total Price:</strong> ₱{selectedOrderRequest.total_price}</p>
               <form onSubmit={handleSubmitOrder}>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">Contact Email</label>
+                  <label className="block text-sm font-medium mb-1">Supplier Email</label>
                   <input
                     type="email"
-                    value={orderForm.contact_email}
-                    onChange={(e) => setOrderForm({ ...orderForm, contact_email: e.target.value })}
-                    required
-                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={orderForm.supplier_email}
+                    readOnly
+                    className="w-full p-2 border border-gray-300 rounded bg-gray-100"
                   />
                 </div>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">Contact Phone</label>
+                  <label className="block text-sm font-medium mb-1">Supplier Phone</label>
                   <input
                     type="tel"
-                    value={orderForm.contact_phone}
-                    onChange={(e) => setOrderForm({ ...orderForm, contact_phone: e.target.value })}
+                    value={orderForm.supplier_phone}
+                    readOnly
+                    className="w-full p-2 border border-gray-300 rounded bg-gray-100"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1">Supplier Address</label>
+                  <input
+                    type="text"
+                    value={orderForm.supplier_address}
+                    readOnly
+                    className="w-full p-2 border border-gray-300 rounded bg-gray-100"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1">Supplier Website</label>
+                  <input
+                    type="url"
+                    value={orderForm.supplier_website}
+                    readOnly
+                    className="w-full p-2 border border-gray-300 rounded bg-gray-100"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1">Delivery Date & Time</label>
+                  <input
+                    type="datetime-local"
+                    value={orderForm.delivery_date}
+                    onChange={(e) => setOrderForm({ ...orderForm, delivery_date: e.target.value })}
                     required
                     className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
