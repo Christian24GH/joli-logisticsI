@@ -21,6 +21,8 @@ const PurchaseProcessing = () => {
   const [receivedOrders, setReceivedOrders] = useState([]);
   const [cancelOrders, setCancelOrders] = useState([]);
   const [activeSection, setActiveSection] = useState('create'); // 'create', 'approval', 'issue', 'orderList'
+  const [filterType, setFilterType] = useState('order-reports');
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -50,6 +52,12 @@ const PurchaseProcessing = () => {
     supplier_website: '',
     delivery_date: '',
   });
+
+  // Receive modal state
+  const [showReceiveModal, setShowReceiveModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [receiverName, setReceiverName] = useState('');
+  const [picture, setPicture] = useState(null);
 
   // Fetch initial data
   useEffect(() => {
@@ -485,6 +493,88 @@ const PurchaseProcessing = () => {
     setLoading(false);
   };
 
+  // Handle receive order - open modal
+  const handleReceiveOrder = (item) => {
+    setSelectedItem(item);
+    setReceiverName('');
+    setPicture(null);
+    setShowReceiveModal(true);
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => setPicture(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const closeReceiveModal = () => {
+    setShowReceiveModal(false);
+    setSelectedItem(null);
+    setReceiverName('');
+    setPicture(null);
+  };
+
+  const handleSubmitReceive = async (e) => {
+    e.preventDefault();
+    if (!receiverName || !picture) {
+      setError('Please provide receiver name and select a photo');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const response = await fetch(logisticsI.backend.api.receivedOrderAdd, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          order_item_id: selectedItem.id,
+          item_name: selectedItem.item_name,
+          quantity: selectedItem.quantity,
+          price_per_unit: selectedItem.price_per_unit,
+          total_price: selectedItem.total_price,
+          supplier_email: selectedItem.supplier_email,
+          supplier_phone: selectedItem.supplier_phone,
+          supplier_address: selectedItem.supplier_address,
+          supplier_website: selectedItem.supplier_website,
+          delivery_date: selectedItem.delivery_date,
+          received_by: receiverName,
+          picture: picture,
+        }),
+      });
+
+      if (response.ok) {
+        setSuccess('Order received successfully.');
+        closeReceiveModal();
+        fetchAllData(); // Refresh all lists
+      } else {
+        let bodyText = await response.text();
+        try {
+          const errorJson = JSON.parse(bodyText);
+          if (errorJson.errors) {
+            const messages = Object.values(errorJson.errors).flat();
+            setError(messages.join('; '));
+          } else if (errorJson.message) {
+            setError(errorJson.message);
+          } else if (errorJson.error) {
+            setError(errorJson.error);
+          } else {
+            setError(JSON.stringify(errorJson));
+          }
+        } catch (parseErr) {
+          setError(bodyText || `Failed to receive order (status ${response.status})`);
+        }
+      }
+    } catch (err) {
+      console.error('Error receiving order:', err);
+      setError('Error receiving order');
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
       <div className="max-w-full mx-auto bg-white rounded-lg shadow-lg p-4">
@@ -663,114 +753,165 @@ const PurchaseProcessing = () => {
           <section>
             <h2 className="text-2xl font-semibold text-gray-700 mb-4">Order History</h2>
 
-            {/* Order Reports */}
-            <div className="mb-6">
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">Order Reports</h3>
-              {orderReports.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full bg-white border border-gray-300 table-fixed">
-                    <thead>
-                      <tr className="bg-gray-100">
-                        <th className="py-1 px-2 border-b text-base text-center w-16">ID</th>
-                        <th className="py-1 px-2 border-b text-base text-center w-16">Request ID</th>
-                        <th className="py-1 px-2 border-b text-base text-center w-32">Item</th>
-                        <th className="py-1 px-2 border-b text-base text-center w-12">Quantity</th>
-                        <th className="py-1 px-2 border-b text-base text-center w-40">Report Reason</th>
-                        <th className="py-1 px-2 border-b text-base text-center w-24">Reported By</th>
-                        <th className="py-1 px-2 border-b text-base text-center w-24">Date Reported</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {orderReports.map((report) => (
-                        <tr key={report.id} className="hover:bg-gray-50">
-                          <td className="py-1 px-2 border-b text-base text-center">{report.id}</td>
-                          <td className="py-1 px-2 border-b text-base text-center">{report.request_id}</td>
-                          <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{report.item_name}</td>
-                          <td className="py-1 px-2 border-b text-base text-center">{report.quantity}</td>
-                          <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{report.report_reason}</td>
-                          <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{report.reported_by}</td>
-                          <td className="py-1 px-2 border-b text-base text-center">{report.date_reported}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-gray-500">No order reports available</p>
-              )}
+            {/* Search and Filter */}
+            <div className="mb-4 flex flex-col sm:flex-row gap-4">
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="order-reports">Order Reports</option>
+                <option value="received-orders">Received Orders</option>
+                <option value="cancel-orders">Cancel Orders</option>
+              </select>
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1"
+              />
             </div>
 
-            {/* Received Orders */}
-            <div className="mb-6">
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">Received Orders</h3>
-              {receivedOrders.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full bg-white border border-gray-300 table-fixed">
-                    <thead>
-                      <tr className="bg-gray-100">
-                        <th className="py-1 px-2 border-b text-base text-center w-16">ID</th>
-                        <th className="py-1 px-2 border-b text-base text-center w-16">Request ID</th>
-                        <th className="py-1 px-2 border-b text-base text-center w-32">Item</th>
-                        <th className="py-1 px-2 border-b text-base text-center w-12">Quantity</th>
-                        <th className="py-1 px-2 border-b text-base text-center w-24">Received By</th>
-                        <th className="py-1 px-2 border-b text-base text-center w-24">Received Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {receivedOrders.map((order) => (
-                        <tr key={order.id} className="hover:bg-gray-50">
-                          <td className="py-1 px-2 border-b text-base text-center">{order.id}</td>
-                          <td className="py-1 px-2 border-b text-base text-center">{order.request_id}</td>
-                          <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{order.item_name}</td>
-                          <td className="py-1 px-2 border-b text-base text-center">{order.quantity}</td>
-                          <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{order.received_by}</td>
-                          <td className="py-1 px-2 border-b text-base text-center">{order.received_date}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-gray-500">No received orders available</p>
-              )}
-            </div>
+            {/* Filtered Data */}
+            {(() => {
+              const filteredOrderReports = orderReports.filter(report =>
+                report.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                report.quantity.toString().includes(searchTerm) ||
+                report.report_reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                report.reported_by.toLowerCase().includes(searchTerm.toLowerCase())
+              );
+              const filteredReceivedOrders = receivedOrders.filter(order =>
+                order.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                order.quantity.toString().includes(searchTerm) ||
+                order.received_by.toLowerCase().includes(searchTerm.toLowerCase())
+              );
+              const filteredCancelOrders = cancelOrders.filter(order =>
+                order.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                order.quantity.toString().includes(searchTerm) ||
+                order.cancel_reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                order.cancelled_by.toLowerCase().includes(searchTerm.toLowerCase())
+              );
 
-            {/* Cancel Orders */}
-            <div className="mb-6">
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">Cancel Orders</h3>
-              {cancelOrders.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full bg-white border border-gray-300 table-fixed">
-                    <thead>
-                      <tr className="bg-gray-100">
-                        <th className="py-1 px-2 border-b text-base text-center w-16">ID</th>
-                        <th className="py-1 px-2 border-b text-base text-center w-16">Request ID</th>
-                        <th className="py-1 px-2 border-b text-base text-center w-32">Item</th>
-                        <th className="py-1 px-2 border-b text-base text-center w-12">Quantity</th>
-                        <th className="py-1 px-2 border-b text-base text-center w-40">Cancel Reason</th>
-                        <th className="py-1 px-2 border-b text-base text-center w-24">Cancelled By</th>
-                        <th className="py-1 px-2 border-b text-base text-center w-24">Date Cancelled</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {cancelOrders.map((order) => (
-                        <tr key={order.id} className="hover:bg-gray-50">
-                          <td className="py-1 px-2 border-b text-base text-center">{order.id}</td>
-                          <td className="py-1 px-2 border-b text-base text-center">{order.request_id}</td>
-                          <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{order.item_name}</td>
-                          <td className="py-1 px-2 border-b text-base text-center">{order.quantity}</td>
-                          <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{order.cancel_reason}</td>
-                          <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{order.cancelled_by}</td>
-                          <td className="py-1 px-2 border-b text-base text-center">{order.date_cancelled}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-gray-500">No cancel orders available</p>
-              )}
-            </div>
+              return (
+                <>
+                  {/* Order Reports */}
+                  {(filterType === 'all' || filterType === 'order-reports') && (
+                    <div className="mb-6">
+                      <h3 className="text-xl font-semibold text-gray-600 mb-2">Order Reports</h3>
+                      {filteredOrderReports.length > 0 ? (
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full bg-white border border-gray-300 table-fixed">
+                            <thead>
+                              <tr className="bg-gray-100">
+                                <th className="py-1 px-2 border-b text-base text-center w-16">ID</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-16">Request ID</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-32">Item</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-12">Quantity</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-40">Report Reason</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-24">Reported By</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-24">Date Reported</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredOrderReports.map((report) => (
+                                <tr key={report.id} className="hover:bg-gray-50">
+                                  <td className="py-1 px-2 border-b text-base text-center">{report.id}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center">{report.request_id}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{report.item_name}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center">{report.quantity}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{report.report_reason}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{report.reported_by}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center">{report.date_reported}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="text-gray-500">No order reports available</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Received Orders */}
+                  {(filterType === 'all' || filterType === 'received-orders') && (
+                    <div className="mb-6">
+                      <h3 className="text-xl font-semibold text-gray-600 mb-2">Received Orders</h3>
+                      {filteredReceivedOrders.length > 0 ? (
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full bg-white border border-gray-300 table-fixed">
+                            <thead>
+                              <tr className="bg-gray-100">
+                                <th className="py-1 px-2 border-b text-base text-center w-16">ID</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-16">Request ID</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-32">Item</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-12">Quantity</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-24">Received By</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-24">Received Date</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredReceivedOrders.map((order) => (
+                                <tr key={order.id} className="hover:bg-gray-50">
+                                  <td className="py-1 px-2 border-b text-base text-center">{order.id}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center">{order.request_id}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{order.item_name}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center">{order.quantity}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{order.received_by}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center">{order.received_date}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="text-gray-500">No received orders available</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Cancel Orders */}
+                  {(filterType === 'all' || filterType === 'cancel-orders') && (
+                    <div className="mb-6">
+                      <h3 className="text-xl font-semibold text-gray-600 mb-2">Cancel Orders</h3>
+                      {filteredCancelOrders.length > 0 ? (
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full bg-white border border-gray-300 table-fixed">
+                            <thead>
+                              <tr className="bg-gray-100">
+                                <th className="py-1 px-2 border-b text-base text-center w-16">ID</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-16">Request ID</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-32">Item</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-12">Quantity</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-40">Cancel Reason</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-24">Cancelled By</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-24">Date Cancelled</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredCancelOrders.map((order) => (
+                                <tr key={order.id} className="hover:bg-gray-50">
+                                  <td className="py-1 px-2 border-b text-base text-center">{order.id}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center">{order.request_id}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{order.item_name}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center">{order.quantity}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{order.cancel_reason}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{order.cancelled_by}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center">{order.date_cancelled}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="text-gray-500">No cancel orders available</p>
+                      )}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </section>
         )}
 
@@ -803,11 +944,17 @@ const PurchaseProcessing = () => {
                         <td className="py-1 px-2 border-b text-base text-center">₱{item.total_price}</td>
                         <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{item.supplier_email}</td>
                         <td className="py-1 px-2 border-b text-base text-center">{item.supplier_phone}</td>
-                        <td className="py-1 px-2 border-b text-base text-center">{item.date_delivery}</td>
+                        <td className="py-1 px-2 border-b text-base text-center">{item.delivery_date}</td>
                         <td className="py-1 px-2 border-b text-center">
                           {item.status === 'ongoing' && (
                             <div className="flex space-x-1 justify-center">
-                              <button className="bg-green-600 text-white px-2 py-1 rounded text-base hover:bg-green-700">Received</button>
+                              <button
+                                onClick={() => handleReceiveOrder(item)}
+                                disabled={loading}
+                                className="bg-green-600 text-white px-2 py-1 rounded text-base hover:bg-green-700 disabled:opacity-50 transition duration-200"
+                              >
+                                Received
+                              </button>
                               <button className="bg-red-600 text-white px-2 py-1 rounded text-base hover:bg-red-700">Report</button>
                             </div>
                           )}
@@ -971,6 +1118,68 @@ const PurchaseProcessing = () => {
             </div>
           </div>
         )}
+
+        {/* Modal for Receive Order */}
+        {showReceiveModal && selectedItem && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+              <h3 className="text-xl font-semibold mb-4">Receive Order</h3>
+              <p className="mb-4"><strong>Item Name:</strong> {selectedItem.item_name}</p>
+              <p className="mb-4"><strong>Quantity:</strong> {selectedItem.quantity}</p>
+              <form onSubmit={handleSubmitReceive}>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1">Receiver Name</label>
+                  <input
+                    type="text"
+                    value={receiverName}
+                    onChange={(e) => setReceiverName(e.target.value)}
+                    required
+                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1">Photo</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {picture && (
+                    <div className="mb-4">
+                      <img src={picture} alt="Selected" className="w-full border border-gray-300 rounded" />
+                      <button
+                        type="button"
+                        onClick={() => setPicture(null)}
+                        className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        Remove Photo
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <button
+                    type="button"
+                    onClick={closeReceiveModal}
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading || !receiverName || !picture}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {loading ? 'Receiving...' : 'Receive Order'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+
       </div>
     </div>
   );

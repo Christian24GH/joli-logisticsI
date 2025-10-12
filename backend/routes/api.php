@@ -115,6 +115,30 @@ Route::put('/order-items/{id}', [PSMController::class, 'updateOrderItem']);  // 
 Route::delete('/order-items/{id}', [PSMController::class, 'deleteOrderItem']);  // Delete order item
 
 // ================================
+// Order Reports Routes
+// ================================
+Route::post('/order-reports', [PSMController::class, 'addOrderReport']);  // Add order report
+Route::put('/order-reports/{id}', [PSMController::class, 'updateOrderReport']);  // Update order report
+Route::get('/order-reports', [PSMController::class, 'getAllOrderReports']);  // Get all order reports
+Route::put('/order-reports/{id}/archive', [PSMController::class, 'archiveOrderReport']);  // Archive order report
+
+// ================================
+// Received Orders Routes
+// ================================
+Route::post('/received-orders', [PSMController::class, 'addReceivedOrder']);  // Add received order
+Route::put('/received-orders/{id}', [PSMController::class, 'updateReceivedOrder']);  // Update received order
+Route::get('/received-orders', [PSMController::class, 'getAllReceivedOrders']);  // Get all received orders
+Route::put('/received-orders/{id}/archive', [PSMController::class, 'archiveReceivedOrder']);  // Archive received order
+
+// ================================
+// Cancel Orders Routes
+// ================================
+Route::post('/cancel-orders', [PSMController::class, 'addCancelOrder']);  // Add cancel order
+Route::put('/cancel-orders/{id}', [PSMController::class, 'updateCancelOrder']);  // Update cancel order
+Route::get('/cancel-orders', [PSMController::class, 'getAllCancelOrders']);  // Get all cancel orders
+Route::put('/cancel-orders/{id}/archive', [PSMController::class, 'archiveCancelOrder']);  // Archive cancel order
+
+// ================================
 // Expense Records Routes
 // ================================ 
 
@@ -226,3 +250,4 @@ Route::put('/fleet-documents/{id}', [DTRSController::class, 'updateFleetDocument
 // QR Code APIs (Frontend Sync)
 Route::get('/assets', [DTRSController::class, 'getAssets']);  // Get all assets
 Route::get('/assets/{token}', [DTRSController::class, 'getAssetByToken']);  // Get asset by QR token
+ 

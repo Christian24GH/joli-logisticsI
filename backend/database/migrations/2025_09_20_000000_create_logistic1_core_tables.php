@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Run the migrations. 
      */
     public function up(): void
     { 
@@ -200,6 +200,7 @@ return new class extends Migration
             $table->string('supplier_phone', 64)->nullable();
             $table->string('supplier_address', 255)->nullable();
             $table->string('supplier_website', 255)->nullable();
+            $table->timestamp('delivery_date')->nullable();
             $table->timestamps();
         });
 
@@ -216,8 +217,7 @@ return new class extends Migration
             $table->string('supplier_phone')->nullable();
             $table->string('supplier_address')->nullable();
             $table->string('supplier_website')->nullable();
-            $table->timestamp('order_date')->nullable();
-            $table->timestamp('date_delivery')->nullable();
+            $table->timestamp('delivery_date')->nullable();
             $table->enum('status', ['received', 'reported', 'ongoing', 'cancel'])->default('ongoing');
             $table->timestamps();
 
@@ -263,6 +263,65 @@ return new class extends Migration
             $table->string('reported_by', 120)->nullable();
             $table->enum('status', ['open', 'in_progress', 'resolved'])->default('open');
             $table->timestamps();
+        });
+
+        Schema::create('order_reports', function (Blueprint $table) {
+            $table->bigIncrements('id');
+            $table->unsignedBigInteger('order_item_id');
+            $table->string('item_name', 100);
+            $table->integer('quantity');
+            $table->decimal('price_per_unit', 12, 2);
+            $table->decimal('total_price', 12, 2);
+            $table->string('supplier_website', 255)->nullable();
+            $table->string('supplier_address', 255)->nullable();
+            $table->string('supplier_phone', 64)->nullable();
+            $table->timestamp('delivery_date')->nullable();
+            $table->string('supplier_email', 150)->nullable();
+            $table->string('status', 50)->default('pending');
+            $table->text('report_description')->nullable();
+            $table->string('proof_report', 255)->nullable();
+            $table->timestamps();
+
+            $table->foreign('order_item_id')->references('order_item_id')->on('order_items')->cascadeOnUpdate()->restrictOnDelete();
+        });
+
+        Schema::create('received_orders', function (Blueprint $table) {
+            $table->bigIncrements('id');
+            $table->unsignedBigInteger('order_item_id');
+            $table->string('item_name', 100);
+            $table->integer('quantity');
+            $table->decimal('price_per_unit', 12, 2);
+            $table->decimal('total_price', 12, 2);
+            $table->string('supplier_website', 255)->nullable();
+            $table->string('supplier_address', 255)->nullable();
+            $table->string('supplier_phone', 64)->nullable();
+            $table->timestamp('delivery_date')->nullable();
+            $table->string('supplier_email', 150)->nullable();
+            $table->string('status', 50)->default('received');
+            $table->string('received_by', 100)->nullable();
+            $table->string('picture', 255)->nullable();
+            $table->timestamps();
+
+            $table->foreign('order_item_id')->references('order_item_id')->on('order_items')->cascadeOnUpdate()->restrictOnDelete();
+        });
+
+        Schema::create('cancel_orders', function (Blueprint $table) {
+            $table->bigIncrements('id');
+            $table->unsignedBigInteger('order_item_id');
+            $table->string('item_name', 100);
+            $table->integer('quantity');
+            $table->decimal('price_per_unit', 12, 2);
+            $table->decimal('total_price', 12, 2);
+            $table->string('supplier_website', 255)->nullable();
+            $table->string('supplier_address', 255)->nullable();
+            $table->string('supplier_phone', 64)->nullable();
+            $table->timestamp('delivery_date')->nullable();
+            $table->string('supplier_email', 150)->nullable();
+            $table->string('status', 50)->default('cancelled');
+            $table->text('cancel_description')->nullable();
+            $table->timestamps();
+
+            $table->foreign('order_item_id')->references('order_item_id')->on('order_items')->cascadeOnUpdate()->restrictOnDelete();
         });
 
         // Insert sample data:
@@ -550,6 +609,9 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('cancel_orders');
+        Schema::dropIfExists('received_orders');
+        Schema::dropIfExists('order_reports');
         Schema::dropIfExists('equipment_issues');
         Schema::dropIfExists('lowstock_request');
         Schema::dropIfExists('equipment_log');

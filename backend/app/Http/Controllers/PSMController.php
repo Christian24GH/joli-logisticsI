@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
- 
+  
 class PSMController extends Controller
 { 
     // ================================ 
@@ -578,7 +578,7 @@ class PSMController extends Controller
     public function getOrderItems()
     {
         $orderItems = DB::table('order_items')
-            ->select('order_items.order_item_id', 'order_items.request_id', 'order_items.item_name', 'order_items.quantity', 'order_items.price_per_unit', 'order_items.total_price', 'order_items.supplier_email', 'order_items.supplier_phone', 'order_items.supplier_address', 'order_items.supplier_website', 'order_items.order_date', 'order_items.date_delivery', 'order_items.status', 'order_items.updated_at')
+            ->select('order_items.order_item_id', 'order_items.request_id', 'order_items.item_name', 'order_items.quantity', 'order_items.price_per_unit', 'order_items.total_price', 'order_items.supplier_email', 'order_items.supplier_phone', 'order_items.supplier_address', 'order_items.supplier_website', 'order_items.created_at', 'order_items.delivery_date', 'order_items.status', 'order_items.updated_at')
             ->get();
         return response()->json($orderItems);
     }
@@ -596,7 +596,7 @@ class PSMController extends Controller
             'supplier_phone' => 'nullable|string|max:64',
             'supplier_address' => 'nullable|string|max:255',
             'supplier_website' => 'nullable|url|max:255',
-            'date_delivery' => 'nullable|date_format:Y-m-d\TH:i',
+            'delivery_date' => 'nullable|date_format:Y-m-d\TH:i',
             'status' => 'sometimes|in:received,reported,ongoing,cancel',
         ]);
 
@@ -610,18 +610,18 @@ class PSMController extends Controller
             'supplier_phone' => $validated['supplier_phone'] ?? null,
             'supplier_address' => $validated['supplier_address'] ?? null,
             'supplier_website' => $validated['supplier_website'] ?? null,
-            'date_delivery' => $validated['date_delivery'] ?? null,
+            'delivery_date' => $validated['delivery_date'] ?? null,
             'status' => $validated['status'] ?? 'ongoing',
-            'order_date' => now(),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
         $orderItem = DB::table('order_items')->where('order_item_id', $id)->first();
 
-        // Update the purchase request status to 'ordered'
+        // Update the purchase request status to 'ordered' and set delivery_date
         DB::table('purchase_request')->where('request_id', $validated['request_id'])->update([
             'status' => 'ordered',
+            'delivery_date' => $validated['delivery_date'] ?? null,
             'updated_at' => now(),
         ]);
 
@@ -666,5 +666,297 @@ class PSMController extends Controller
         DB::table('order_items')->where('order_item_id', $id)->delete();
 
         return response()->json(['message' => 'Order item deleted successfully']);
+    }
+
+    // ================================
+    // Order Reports Management
+    // ================================
+
+    // Add order report
+    public function addOrderReport(Request $request)
+    {
+        $validated = $request->validate([
+            'order_item_id' => 'required|exists:order_items,order_item_id',
+            'item_name' => 'required|string|max:100',
+            'quantity' => 'required|integer|min:1',
+            'price_per_unit' => 'required|numeric|min:0',
+            'total_price' => 'required|numeric|min:0',
+            'supplier_website' => 'nullable|url|max:255',
+            'supplier_address' => 'nullable|string|max:255',
+            'supplier_phone' => 'nullable|string|max:64',
+            'delivery_date' => 'nullable|date_format:Y-m-d\TH:i',
+            'supplier_email' => 'nullable|email|max:150',
+            'status' => 'sometimes|in:reported,archived',
+            'report_description' => 'nullable|string',
+        ]);
+
+        $id = DB::table('order_reports')->insertGetId([
+            'order_item_id' => $validated['order_item_id'],
+            'item_name' => $validated['item_name'],
+            'quantity' => $validated['quantity'],
+            'price_per_unit' => $validated['price_per_unit'],
+            'total_price' => $validated['total_price'],
+            'supplier_website' => $validated['supplier_website'] ?? null,
+            'supplier_address' => $validated['supplier_address'] ?? null,
+            'supplier_phone' => $validated['supplier_phone'] ?? null,
+            'delivery_date' => $validated['delivery_date'] ?? null,
+            'supplier_email' => $validated['supplier_email'] ?? null,
+            'status' => $validated['status'] ?? 'reported',
+            'report_description' => $validated['report_description'] ?? null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $orderReport = DB::table('order_reports')->where('id', $id)->first();
+
+        return response()->json(['message' => 'Order report added successfully', 'order_report' => $orderReport], 201);
+    }
+
+    // Update order report
+    public function updateOrderReport(Request $request, $id)
+    {
+        $existing = DB::table('order_reports')->where('id', $id)->first();
+        if (! $existing) {
+            return response()->json(['error' => 'Order report not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'item_name' => 'sometimes|required|string|max:100',
+            'quantity' => 'sometimes|integer|min:1',
+            'price_per_unit' => 'sometimes|numeric|min:0',
+            'total_price' => 'sometimes|numeric|min:0',
+            'supplier_website' => 'nullable|url|max:255',
+            'supplier_address' => 'nullable|string|max:255',
+            'supplier_phone' => 'nullable|string|max:64',
+            'delivery_date' => 'nullable|date_format:Y-m-d\TH:i',
+            'supplier_email' => 'nullable|email|max:150',
+            'status' => 'sometimes|in:reported,archived',
+            'report_description' => 'nullable|string',
+        ]);
+
+        DB::table('order_reports')->where('id', $id)->update(array_merge($validated, ['updated_at' => now()]));
+
+        $orderReport = DB::table('order_reports')->where('id', $id)->first();
+
+        return response()->json(['message' => 'Order report updated successfully', 'order_report' => $orderReport]);
+    }
+
+    // Get all order reports
+    public function getAllOrderReports()
+    {
+        $orderReports = DB::table('order_reports')->get();
+        return response()->json($orderReports);
+    }
+
+    // Archive order report
+    public function archiveOrderReport($id)
+    {
+        $existing = DB::table('order_reports')->where('id', $id)->first();
+        if (! $existing) {
+            return response()->json(['error' => 'Order report not found'], 404);
+        }
+
+        DB::table('order_reports')->where('id', $id)->update(['status' => 'archived', 'updated_at' => now()]);
+
+        return response()->json(['message' => 'Order report archived successfully']);
+    }
+
+    // ================================
+    // Received Orders Management
+    // ================================
+
+    // Add received order
+    public function addReceivedOrder(Request $request)
+    {
+        $validated = $request->validate([
+            'order_item_id' => 'required|exists:order_items,order_item_id',
+            'item_name' => 'required|string|max:100',
+            'quantity' => 'required|integer|min:1',
+            'price_per_unit' => 'required|numeric|min:0',
+            'total_price' => 'required|numeric|min:0',
+            'supplier_website' => 'nullable|url|max:255',
+            'supplier_address' => 'nullable|string|max:255',
+            'supplier_phone' => 'nullable|string|max:64',
+            'delivery_date' => 'nullable|date',
+            'supplier_email' => 'nullable|email|max:150',
+            'status' => 'sometimes|in:received,archived',
+            'receiver_name' => 'required|string|max:100',
+            'picture' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:2048',
+        ]);
+
+        $data = [
+            'order_item_id' => $validated['order_item_id'],
+            'item_name' => $validated['item_name'],
+            'quantity' => $validated['quantity'],
+            'price_per_unit' => $validated['price_per_unit'],
+            'total_price' => $validated['total_price'],
+            'supplier_website' => $validated['supplier_website'] ?? null,
+            'supplier_address' => $validated['supplier_address'] ?? null,
+            'supplier_phone' => $validated['supplier_phone'] ?? null,
+            'delivery_date' => $validated['delivery_date'] ?? null,
+            'supplier_email' => $validated['supplier_email'] ?? null,
+            'status' => $validated['status'] ?? 'received',
+            'received_by' => $validated['receiver_name'],
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+
+        if ($request->hasFile('picture')) {
+            $path = $request->file('picture')->store('pictures', 'public');
+            $data['picture'] = $path;
+        }
+
+        $id = DB::table('received_orders')->insertGetId($data);
+
+        // Update the order_items status to 'received'
+        DB::table('order_items')->where('order_item_id', $validated['order_item_id'])->update([
+            'status' => 'received',
+            'updated_at' => now(),
+        ]);
+
+        $receivedOrder = DB::table('received_orders')->where('id', $id)->first();
+
+        return response()->json(['message' => 'Received order added successfully', 'received_order' => $receivedOrder], 201);
+    }
+
+    // Update received order
+    public function updateReceivedOrder(Request $request, $id)
+    {
+        $existing = DB::table('received_orders')->where('id', $id)->first();
+        if (! $existing) {
+            return response()->json(['error' => 'Received order not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'item_name' => 'sometimes|required|string|max:100',
+            'quantity' => 'sometimes|integer|min:1',
+            'price_per_unit' => 'sometimes|numeric|min:0',
+            'total_price' => 'sometimes|numeric|min:0',
+            'supplier_website' => 'nullable|url|max:255',
+            'supplier_address' => 'nullable|string|max:255',
+            'supplier_phone' => 'nullable|string|max:64',
+            'delivery_date' => 'nullable|date_format:Y-m-d\TH:i',
+            'supplier_email' => 'nullable|email|max:150',
+            'status' => 'sometimes|in:received,archived',
+        ]);
+
+        DB::table('received_orders')->where('id', $id)->update(array_merge($validated, ['updated_at' => now()]));
+
+        $receivedOrder = DB::table('received_orders')->where('id', $id)->first();
+
+        return response()->json(['message' => 'Received order updated successfully', 'received_order' => $receivedOrder]);
+    }
+
+    // Get all received orders
+    public function getAllReceivedOrders()
+    {
+        $receivedOrders = DB::table('received_orders')->get();
+        return response()->json($receivedOrders);
+    }
+
+    // Archive received order
+    public function archiveReceivedOrder($id)
+    {
+        $existing = DB::table('received_orders')->where('id', $id)->first();
+        if (! $existing) {
+            return response()->json(['error' => 'Received order not found'], 404);
+        }
+
+        DB::table('received_orders')->where('id', $id)->update(['status' => 'archived', 'updated_at' => now()]);
+
+        return response()->json(['message' => 'Received order archived successfully']);
+    }
+
+    // ================================
+    // Cancel Orders Management
+    // ================================
+
+    // Add cancel order
+    public function addCancelOrder(Request $request)
+    {
+        $validated = $request->validate([
+            'order_item_id' => 'required|exists:order_items,order_item_id',
+            'item_name' => 'required|string|max:100',
+            'quantity' => 'required|integer|min:1',
+            'price_per_unit' => 'required|numeric|min:0',
+            'total_price' => 'required|numeric|min:0',
+            'supplier_website' => 'nullable|url|max:255',
+            'supplier_address' => 'nullable|string|max:255',
+            'supplier_phone' => 'nullable|string|max:64',
+            'delivery_date' => 'nullable|date_format:Y-m-d\TH:i',
+            'supplier_email' => 'nullable|email|max:150',
+            'status' => 'sometimes|in:cancelled,archived',
+            'cancel_description' => 'nullable|string',
+        ]);
+
+        $id = DB::table('cancel_orders')->insertGetId([
+            'order_item_id' => $validated['order_item_id'],
+            'item_name' => $validated['item_name'],
+            'quantity' => $validated['quantity'],
+            'price_per_unit' => $validated['price_per_unit'],
+            'total_price' => $validated['total_price'],
+            'supplier_website' => $validated['supplier_website'] ?? null,
+            'supplier_address' => $validated['supplier_address'] ?? null,
+            'supplier_phone' => $validated['supplier_phone'] ?? null,
+            'delivery_date' => $validated['delivery_date'] ?? null,
+            'supplier_email' => $validated['supplier_email'] ?? null,
+            'status' => $validated['status'] ?? 'cancelled',
+            'cancel_description' => $validated['cancel_description'] ?? null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $cancelOrder = DB::table('cancel_orders')->where('id', $id)->first();
+
+        return response()->json(['message' => 'Cancel order added successfully', 'cancel_order' => $cancelOrder], 201);
+    }
+
+    // Update cancel order
+    public function updateCancelOrder(Request $request, $id)
+    {
+        $existing = DB::table('cancel_orders')->where('id', $id)->first();
+        if (! $existing) {
+            return response()->json(['error' => 'Cancel order not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'item_name' => 'sometimes|required|string|max:100',
+            'quantity' => 'sometimes|integer|min:1',
+            'price_per_unit' => 'sometimes|numeric|min:0',
+            'total_price' => 'sometimes|numeric|min:0',
+            'supplier_website' => 'nullable|url|max:255',
+            'supplier_address' => 'nullable|string|max:255',
+            'supplier_phone' => 'nullable|string|max:64',
+            'delivery_date' => 'nullable|date_format:Y-m-d\TH:i',
+            'supplier_email' => 'nullable|email|max:150',
+            'status' => 'sometimes|in:cancelled,archived',
+            'cancel_description' => 'nullable|string',
+        ]);
+
+        DB::table('cancel_orders')->where('id', $id)->update(array_merge($validated, ['updated_at' => now()]));
+
+        $cancelOrder = DB::table('cancel_orders')->where('id', $id)->first();
+
+        return response()->json(['message' => 'Cancel order updated successfully', 'cancel_order' => $cancelOrder]);
+    }
+
+    // Get all cancel orders
+    public function getAllCancelOrders()
+    {
+        $cancelOrders = DB::table('cancel_orders')->get();
+        return response()->json($cancelOrders);
+    }
+
+    // Archive cancel order
+    public function archiveCancelOrder($id)
+    {
+        $existing = DB::table('cancel_orders')->where('id', $id)->first();
+        if (! $existing) {
+            return response()->json(['error' => 'Cancel order not found'], 404);
+        }
+
+        DB::table('cancel_orders')->where('id', $id)->update(['status' => 'archived', 'updated_at' => now()]);
+
+        return response()->json(['message' => 'Cancel order archived successfully']);
     }
 }
