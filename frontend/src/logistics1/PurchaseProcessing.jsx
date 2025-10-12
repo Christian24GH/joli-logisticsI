@@ -6,7 +6,7 @@ const PurchaseProcessing = () => {
   const [loading, setLoading] = useState(false);
 
   const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(''); 
 
   // State for Issue Purchase Order
   const [purchaseOrderForm, setPurchaseOrderForm] = useState({

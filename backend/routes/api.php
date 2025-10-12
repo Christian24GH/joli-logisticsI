@@ -8,6 +8,9 @@ use App\Http\Controllers\{
     DTRSController
 };
 use Illuminate\Support\Facades\Route;
+
+Route::get('/test', fn()=> "LOG 1 API is working");
+
 // ===========================
 // Smart Warehousing System (SWS)
 // ===========================
@@ -36,7 +39,7 @@ Route::get('/storage-location/{id}', [EquipmentManagementController::class, 'sho
 Route::post('/storage-location/add', [EquipmentManagementController::class, 'storeStorage']);
 Route::put('/storage-location/change/{id}', [EquipmentManagementController::class, 'updateStorage']);
 Route::put('/storage-location/archive/{id}', [EquipmentManagementController::class, 'archiveStorage']);
-Route::get('/storage-location/search', [EquipmentManagementController::class, 'searchStorage']);  
+Route::get('/storage-location/search', [EquipmentManagementController::class, 'searchStorage']); 
 
 // Additional Equipment Routes (Frontend Sync)
 Route::get('/low-stock-alert', [EquipmentManagementController::class, 'lowStockAlert']);
