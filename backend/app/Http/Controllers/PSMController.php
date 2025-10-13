@@ -581,6 +581,7 @@ class PSMController extends Controller
     {
         $orderItems = DB::table('order_items')
             ->select('order_items.order_item_id', 'order_items.request_id', 'order_items.item_name', 'order_items.quantity', 'order_items.price_per_unit', 'order_items.total_price', 'order_items.supplier_email', 'order_items.supplier_phone', 'order_items.supplier_address', 'order_items.supplier_website', 'order_items.created_at', 'order_items.delivery_date', 'order_items.status', 'order_items.updated_at')
+            ->where('status', 'ongoing')
             ->orderBy('delivery_date', 'desc')
             ->get();
         return response()->json($orderItems);
@@ -726,6 +727,11 @@ class PSMController extends Controller
         ]);
 
         $orderReport = DB::table('order_reports')->where('id', $id)->first();
+
+        // Update the order item status to 'reported'
+        DB::table('order_items')
+            ->where('order_item_id', $validated['order_item_id'])
+            ->update(['status' => 'reported']);
 
         return response()->json(['message' => 'Order report added successfully', 'order_report' => $orderReport], 201);
     }
