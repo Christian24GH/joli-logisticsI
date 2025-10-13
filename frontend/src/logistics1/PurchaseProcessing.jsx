@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { logisticsI } from '../api/logisticsI';
+import AuthContext from '../context/AuthProvider';
 
 const PurchaseProcessing = () => {
+  const { auth } = useContext(AuthContext);
   const [purchaseRequests, setPurchaseRequests] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -13,13 +15,13 @@ const PurchaseProcessing = () => {
     request_id: '',
     supplier_id: '',
     total_amount: '',
-  }); 
+  });
   const [suppliers, setSuppliers] = useState([]);
   const [lowstockRequests, setLowstockRequests] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
   const [orderReports, setOrderReports] = useState([]);
   const [receivedOrders, setReceivedOrders] = useState([]);
-  const [cancelOrders, setCancelOrders] = useState([]);
+  const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [activeSection, setActiveSection] = useState('create'); // 'create', 'approval', 'issue', 'orderList'
   const [filterType, setFilterType] = useState('order-reports');
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,6 +34,7 @@ const PurchaseProcessing = () => {
     price: '',
     quantity: '',
     total: '',
+    description: '',
     supplier_email: '',
     supplier_phone: '',
     supplier_address: '',
@@ -41,6 +44,49 @@ const PurchaseProcessing = () => {
   // Order modal state
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedOrderRequest, setSelectedOrderRequest] = useState(null);
+
+  // Issue Purchase Order modal state
+  const [showIssueOrderModal, setShowIssueOrderModal] = useState(false);
+  const [selectedIssueRequest, setSelectedIssueRequest] = useState(null);
+
+  // Details modal state
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedDetailsRequest, setSelectedDetailsRequest] = useState(null);
+
+  // Received details modal state
+  const [showReceivedDetailsModal, setShowReceivedDetailsModal] = useState(false);
+  const [selectedReceivedOrder, setSelectedReceivedOrder] = useState(null);
+
+  // Report modal state
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [selectedReportItem, setSelectedReportItem] = useState(null);
+  const [reportForm, setReportForm] = useState({
+    description: '',
+    photos: [],
+  });
+
+  // Report details modal state
+  const [showReportDetailsModal, setShowReportDetailsModal] = useState(false);
+  const [selectedReportDetails, setSelectedReportDetails] = useState(null);
+
+  // Zoomed image modal state
+  const [showZoomedImage, setShowZoomedImage] = useState(false);
+  const [zoomedImageSrc, setZoomedImageSrc] = useState('');
+  const [zoomLevel, setZoomLevel] = useState(1);
+
+  // Open report details modal
+  const openReportDetailsModal = (report) => {
+    setSelectedReportDetails(report);
+    setShowReportDetailsModal(true);
+    setZoomLevel(1); // Reset zoom level
+  };
+
+  // Close report details modal
+  const closeReportDetailsModal = () => {
+    setShowReportDetailsModal(false);
+    setSelectedReportDetails(null);
+  };
+
   const [orderForm, setOrderForm] = useState({
     item_name: '',
     quantity: '',
@@ -53,11 +99,51 @@ const PurchaseProcessing = () => {
     delivery_date: '',
   });
 
-  // Receive modal state
-  const [showReceiveModal, setShowReceiveModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [receiverName, setReceiverName] = useState('');
-  const [picture, setPicture] = useState(null);
+  // Open details modal
+  const openDetailsModal = (request) => {
+    setSelectedDetailsRequest(request);
+    setShowDetailsModal(true);
+  };
+
+  // Close details modal
+  const closeDetailsModal = () => {
+    setShowDetailsModal(false);
+    setSelectedDetailsRequest(null);
+  };
+
+  // Open received details modal
+  const openReceivedDetailsModal = (order) => {
+    setSelectedReceivedOrder(order);
+    setShowReceivedDetailsModal(true);
+  };
+
+  // Close received details modal
+  const closeReceivedDetailsModal = () => {
+    setShowReceivedDetailsModal(false);
+    setSelectedReceivedOrder(null);
+  };
+
+  // Open report modal
+  const openReportModal = (item) => {
+    setSelectedReportItem(item);
+    setReportForm({
+      description: '',
+      photos: [],
+    });
+    setShowReportModal(true);
+  };
+
+  // Close report modal
+  const closeReportModal = () => {
+    setShowReportModal(false);
+    setSelectedReportItem(null);
+    setReportForm({
+      description: '',
+      photos: [],
+    });
+  };
+
+
 
   // Fetch initial data
   useEffect(() => {
@@ -71,7 +157,7 @@ const PurchaseProcessing = () => {
     fetchOrderItems();
     fetchOrderReports();
     fetchReceivedOrders();
-    fetchCancelOrders();
+    fetchPurchaseOrders();
   };
 
   const fetchPurchaseRequests = async () => {
@@ -158,19 +244,21 @@ const PurchaseProcessing = () => {
     }
   };
 
-  const fetchCancelOrders = async () => {
+  const fetchPurchaseOrders = async () => {
     setSuccess('');
     setError('');
     try {
-      const response = await fetch(logisticsI.backend.api.cancelOrders);
-      if (!response.ok) throw new Error('Failed to fetch cancel orders');
+      const response = await fetch(logisticsI.backend.api.purchaseOrders);
+      if (!response.ok) throw new Error('Failed to fetch purchase orders');
       const data = await response.json();
-      setCancelOrders(data || []);
+      setPurchaseOrders(data || []);
     } catch (err) {
-      console.error('Error fetching cancel orders:', err);
-      setError('Failed to fetch cancel orders');
+      console.error('Error fetching purchase orders:', err);
+      setError('Failed to fetch purchase orders');
     }
   };
+
+
 
   // Helper to update low stock request status
   const updateLowStockStatus = async (id, status) => {
@@ -229,6 +317,7 @@ const PurchaseProcessing = () => {
       price: '',
       quantity: request.quantity,
       total: '',
+      description: '',
       supplier_email: '',
       supplier_phone: '',
       supplier_address: '',
@@ -246,6 +335,7 @@ const PurchaseProcessing = () => {
       price: '',
       quantity: '',
       total: '',
+      description: '',
       supplier_email: '',
       supplier_phone: '',
       supplier_address: '',
@@ -338,9 +428,9 @@ const PurchaseProcessing = () => {
   const handleSubmitPurchase = async (e) => {
     e.preventDefault();
     if (!purchaseForm.supplier_id || !purchaseForm.price || !purchaseForm.total) {
-      setError('Please fill all fields');
+      setError('Please fill all required fields');
       return;
-    } 
+    }
     setLoading(true);
     setError('');
     try {
@@ -356,6 +446,7 @@ const PurchaseProcessing = () => {
           price_per_unit: purchaseForm.price,
           total_amount: purchaseForm.total,
           requested_by: selectedRequest.requested_by,
+          description: purchaseForm.description,
           status: 'pending'
         }),
       });
@@ -493,62 +584,33 @@ const PurchaseProcessing = () => {
     setLoading(false);
   };
 
-  // Handle receive order - open modal
-  const handleReceiveOrder = (item) => {
-    setSelectedItem(item);
-    setReceiverName('');
-    setPicture(null);
-    setShowReceiveModal(true);
-  };
+  // Handle mark as received
+  const handleReceived = async (item) => {
+    const receiverName = auth?.name || 'System';
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => setPicture(reader.result);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const closeReceiveModal = () => {
-    setShowReceiveModal(false);
-    setSelectedItem(null);
-    setReceiverName('');
-    setPicture(null);
-  };
-
-  const handleSubmitReceive = async (e) => {
-    e.preventDefault();
-    if (!receiverName || !picture) {
-      setError('Please provide receiver name and select a photo');
-      return;
-    }
     setLoading(true);
     setError('');
     try {
       const response = await fetch(logisticsI.backend.api.receivedOrderAdd, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
-          order_item_id: selectedItem.id,
-          item_name: selectedItem.item_name,
-          quantity: selectedItem.quantity,
-          price_per_unit: selectedItem.price_per_unit,
-          total_price: selectedItem.total_price,
-          supplier_email: selectedItem.supplier_email,
-          supplier_phone: selectedItem.supplier_phone,
-          supplier_address: selectedItem.supplier_address,
-          supplier_website: selectedItem.supplier_website,
-          delivery_date: selectedItem.delivery_date,
-          received_by: receiverName,
-          picture: picture,
+          order_item_id: item.order_item_id,
+          item_name: item.item_name,
+          quantity: item.quantity,
+          price_per_unit: item.price_per_unit,
+          total_price: item.total_price,
+          supplier_email: item.supplier_email,
+          supplier_phone: item.supplier_phone,
+          supplier_address: item.supplier_address,
+          supplier_website: item.supplier_website,
+          delivery_date: item.delivery_date,
+          receiver_name: receiverName,
         }),
       });
 
       if (response.ok) {
-        setSuccess('Order received successfully.');
-        closeReceiveModal();
+        setSuccess('Order marked as received successfully.');
         fetchAllData(); // Refresh all lists
       } else {
         let bodyText = await response.text();
@@ -565,15 +627,89 @@ const PurchaseProcessing = () => {
             setError(JSON.stringify(errorJson));
           }
         } catch (parseErr) {
-          setError(bodyText || `Failed to receive order (status ${response.status})`);
+          setError(bodyText || `Failed to mark as received (status ${response.status})`);
         }
       }
     } catch (err) {
-      console.error('Error receiving order:', err);
-      setError('Error receiving order');
+      console.error('Error marking as received:', err);
+      setError('Error marking as received');
     }
     setLoading(false);
   };
+
+  // Handle submit report
+  const handleSubmitReport = async (e) => {
+    e.preventDefault();
+    if (!reportForm.description.trim()) {
+      setError('Please provide a description of the issue');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const formData = new FormData();
+      formData.append('order_item_id', selectedReportItem.order_item_id);
+      formData.append('item_name', selectedReportItem.item_name);
+      formData.append('quantity', selectedReportItem.quantity);
+      formData.append('price_per_unit', selectedReportItem.price_per_unit);
+      formData.append('total_price', selectedReportItem.total_price);
+      formData.append('supplier_email', selectedReportItem.supplier_email || '');
+      formData.append('supplier_phone', selectedReportItem.supplier_phone || '');
+      formData.append('supplier_address', selectedReportItem.supplier_address || '');
+      formData.append('supplier_website', selectedReportItem.supplier_website || '');
+
+      // Format delivery_date to match validation (Y-m-d\TH:i)
+      let deliveryDate = selectedReportItem.delivery_date;
+      if (deliveryDate) {
+        const date = new Date(deliveryDate);
+        deliveryDate = date.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
+      }
+      formData.append('delivery_date', deliveryDate);
+
+      formData.append('report_description', reportForm.description.trim());
+      formData.append('reported_by', auth?.name || 'Anonymous');
+
+      if (reportForm.photos && reportForm.photos.length > 0) {
+        reportForm.photos.forEach((photo) => {
+          formData.append('proof_report[]', photo);
+        });
+      }
+
+      const response = await fetch(logisticsI.backend.api.orderReportAdd, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        setSuccess('Report submitted successfully.');
+        closeReportModal();
+        fetchAllData(); // Refresh lists
+      } else {
+        let bodyText = await response.text();
+        try {
+          const errorJson = JSON.parse(bodyText);
+          if (errorJson.errors) {
+            const messages = Object.values(errorJson.errors).flat();
+            setError(messages.join('; '));
+          } else if (errorJson.message) {
+            setError(errorJson.message);
+          } else if (errorJson.error) {
+            setError(errorJson.error);
+          } else {
+            setError(JSON.stringify(errorJson));
+          }
+        } catch (parseErr) {
+          setError(bodyText || `Failed to submit report (status ${response.status})`);
+        }
+      }
+    } catch (err) {
+      console.error('Error submitting report:', err);
+      setError('Error submitting report');
+    }
+    setLoading(false);
+  };
+
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
@@ -737,6 +873,15 @@ const PurchaseProcessing = () => {
                               Order
                             </button>
                           )}
+                          {request.status === 'rejected' && (
+                            <button
+                              onClick={() => openDetailsModal(request)}
+                              disabled={loading}
+                              className="bg-gray-600 text-white px-2 py-1 rounded text-base hover:bg-gray-700 disabled:opacity-50 transition duration-200"
+                            >
+                              Details
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -762,7 +907,6 @@ const PurchaseProcessing = () => {
               >
                 <option value="order-reports">Order Reports</option>
                 <option value="received-orders">Received Orders</option>
-                <option value="cancel-orders">Cancel Orders</option>
               </select>
               <input
                 type="text"
@@ -778,20 +922,24 @@ const PurchaseProcessing = () => {
               const filteredOrderReports = orderReports.filter(report =>
                 report.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 report.quantity.toString().includes(searchTerm) ||
-                report.report_reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (report.report_description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                 report.reported_by.toLowerCase().includes(searchTerm.toLowerCase())
               );
               const filteredReceivedOrders = receivedOrders.filter(order =>
                 order.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 order.quantity.toString().includes(searchTerm) ||
-                order.received_by.toLowerCase().includes(searchTerm.toLowerCase())
+                order.received_by.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                order.price_per_unit.toString().includes(searchTerm) ||
+                order.total_price.toString().includes(searchTerm) ||
+                order.delivery_date.includes(searchTerm) ||
+                order.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                order.supplier_website.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                order.supplier_address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                order.supplier_phone.includes(searchTerm) ||
+                order.supplier_email.toLowerCase().includes(searchTerm.toLowerCase())
               );
-              const filteredCancelOrders = cancelOrders.filter(order =>
-                order.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                order.quantity.toString().includes(searchTerm) ||
-                order.cancel_reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                order.cancelled_by.toLowerCase().includes(searchTerm.toLowerCase())
-              );
+
+
 
               return (
                 <>
@@ -804,25 +952,42 @@ const PurchaseProcessing = () => {
                           <table className="min-w-full bg-white border border-gray-300 table-fixed">
                             <thead>
                               <tr className="bg-gray-100">
-                                <th className="py-1 px-2 border-b text-base text-center w-16">ID</th>
-                                <th className="py-1 px-2 border-b text-base text-center w-16">Request ID</th>
-                                <th className="py-1 px-2 border-b text-base text-center w-32">Item</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-20">Order Item ID</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-32">Item Name</th>
                                 <th className="py-1 px-2 border-b text-base text-center w-12">Quantity</th>
-                                <th className="py-1 px-2 border-b text-base text-center w-40">Report Reason</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-20">Price/Unit</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-20">Total Price</th>
                                 <th className="py-1 px-2 border-b text-base text-center w-24">Reported By</th>
-                                <th className="py-1 px-2 border-b text-base text-center w-24">Date Reported</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-16">Status</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-16">Action</th>
                               </tr>
                             </thead>
                             <tbody>
                               {filteredOrderReports.map((report) => (
                                 <tr key={report.id} className="hover:bg-gray-50">
-                                  <td className="py-1 px-2 border-b text-base text-center">{report.id}</td>
-                                  <td className="py-1 px-2 border-b text-base text-center">{report.request_id}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center">{report.order_item_id}</td>
                                   <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{report.item_name}</td>
                                   <td className="py-1 px-2 border-b text-base text-center">{report.quantity}</td>
-                                  <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{report.report_reason}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center">₱{report.price_per_unit}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center">₱{report.total_price}</td>
                                   <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{report.reported_by}</td>
-                                  <td className="py-1 px-2 border-b text-base text-center">{report.date_reported}</td>
+                                  <td className="py-1 px-2 border-b text-center">
+                                    <span className={`px-2 py-1 rounded text-base inline-block ${
+                                      report.status === 'reported' ? 'bg-yellow-100 text-yellow-800' :
+                                      report.status === 'archived' ? 'bg-gray-100 text-gray-800' :
+                                      'bg-blue-100 text-blue-800'
+                                    }`}>
+                                      {report.status}
+                                    </span>
+                                  </td>
+                                  <td className="py-1 px-2 border-b text-center">
+                                    <button
+                                      onClick={() => openReportDetailsModal(report)}
+                                      className="bg-blue-600 text-white px-2 py-1 rounded text-xs hover:bg-blue-700"
+                                    >
+                                      View
+                                    </button>
+                                  </td>
                                 </tr>
                               ))}
                             </tbody>
@@ -843,23 +1008,44 @@ const PurchaseProcessing = () => {
                           <table className="min-w-full bg-white border border-gray-300 table-fixed">
                             <thead>
                               <tr className="bg-gray-100">
-                                <th className="py-1 px-2 border-b text-base text-center w-16">ID</th>
-                                <th className="py-1 px-2 border-b text-base text-center w-16">Request ID</th>
-                                <th className="py-1 px-2 border-b text-base text-center w-32">Item</th>
-                                <th className="py-1 px-2 border-b text-base text-center w-12">Quantity</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-20">Order Item ID</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-32">Item Name</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-16">Quantity</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-20">Price/Unit</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-20">Total Price</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-24">Delivery Date</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-16">Status</th>
                                 <th className="py-1 px-2 border-b text-base text-center w-24">Received By</th>
-                                <th className="py-1 px-2 border-b text-base text-center w-24">Received Date</th>
+                                <th className="py-1 px-2 border-b text-base text-center w-16">Contacts</th>
                               </tr>
                             </thead>
                             <tbody>
                               {filteredReceivedOrders.map((order) => (
                                 <tr key={order.id} className="hover:bg-gray-50">
-                                  <td className="py-1 px-2 border-b text-base text-center">{order.id}</td>
-                                  <td className="py-1 px-2 border-b text-base text-center">{order.request_id}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center">{order.order_item_id}</td>
                                   <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{order.item_name}</td>
                                   <td className="py-1 px-2 border-b text-base text-center">{order.quantity}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center">₱{order.price_per_unit}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center">₱{order.total_price}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center">{new Date(order.delivery_date).toLocaleString('en-US', { timeZone: 'Asia/Manila' })}</td>
+                                  <td className="py-1 px-2 border-b text-base text-center">
+                                    <span className={`px-2 py-1 rounded text-base inline-block ${
+                                      order.status === 'received' ? 'bg-green-100 text-green-800' :
+                                      order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {order.status}
+                                    </span>
+                                  </td>
                                   <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{order.received_by}</td>
-                                  <td className="py-1 px-2 border-b text-base text-center">{order.received_date}</td>
+                                  <td className="py-1 px-2 border-b text-center">
+                                    <button
+                                      onClick={() => openReceivedDetailsModal(order)}
+                                      className="bg-blue-600 text-white px-2 py-1 rounded text-base hover:bg-blue-700"
+                                    >
+                                      Contact
+                                    </button>
+                                  </td>
                                 </tr>
                               ))}
                             </tbody>
@@ -871,44 +1057,7 @@ const PurchaseProcessing = () => {
                     </div>
                   )}
 
-                  {/* Cancel Orders */}
-                  {(filterType === 'all' || filterType === 'cancel-orders') && (
-                    <div className="mb-6">
-                      <h3 className="text-xl font-semibold text-gray-600 mb-2">Cancel Orders</h3>
-                      {filteredCancelOrders.length > 0 ? (
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full bg-white border border-gray-300 table-fixed">
-                            <thead>
-                              <tr className="bg-gray-100">
-                                <th className="py-1 px-2 border-b text-base text-center w-16">ID</th>
-                                <th className="py-1 px-2 border-b text-base text-center w-16">Request ID</th>
-                                <th className="py-1 px-2 border-b text-base text-center w-32">Item</th>
-                                <th className="py-1 px-2 border-b text-base text-center w-12">Quantity</th>
-                                <th className="py-1 px-2 border-b text-base text-center w-40">Cancel Reason</th>
-                                <th className="py-1 px-2 border-b text-base text-center w-24">Cancelled By</th>
-                                <th className="py-1 px-2 border-b text-base text-center w-24">Date Cancelled</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {filteredCancelOrders.map((order) => (
-                                <tr key={order.id} className="hover:bg-gray-50">
-                                  <td className="py-1 px-2 border-b text-base text-center">{order.id}</td>
-                                  <td className="py-1 px-2 border-b text-base text-center">{order.request_id}</td>
-                                  <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{order.item_name}</td>
-                                  <td className="py-1 px-2 border-b text-base text-center">{order.quantity}</td>
-                                  <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{order.cancel_reason}</td>
-                                  <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{order.cancelled_by}</td>
-                                  <td className="py-1 px-2 border-b text-base text-center">{order.date_cancelled}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <p className="text-gray-500">No cancel orders available</p>
-                      )}
-                    </div>
-                  )}
+
                 </>
               );
             })()}
@@ -944,18 +1093,24 @@ const PurchaseProcessing = () => {
                         <td className="py-1 px-2 border-b text-base text-center">₱{item.total_price}</td>
                         <td className="py-1 px-2 border-b text-base text-center truncate overflow-hidden">{item.supplier_email}</td>
                         <td className="py-1 px-2 border-b text-base text-center">{item.supplier_phone}</td>
-                        <td className="py-1 px-2 border-b text-base text-center">{item.delivery_date}</td>
+                        <td className="py-1 px-2 border-b text-base text-center">{new Date(item.delivery_date).toLocaleString('en-US', { timeZone: 'Asia/Manila' })}</td>
                         <td className="py-1 px-2 border-b text-center">
                           {item.status === 'ongoing' && (
                             <div className="flex space-x-1 justify-center">
                               <button
-                                onClick={() => handleReceiveOrder(item)}
+                                onClick={() => handleReceived(item)}
                                 disabled={loading}
-                                className="bg-green-600 text-white px-2 py-1 rounded text-base hover:bg-green-700 disabled:opacity-50 transition duration-200"
+                                className="bg-green-600 text-white px-2 py-1 rounded text-base hover:bg-green-700 disabled:opacity-50"
                               >
                                 Received
                               </button>
-                              <button className="bg-red-600 text-white px-2 py-1 rounded text-base hover:bg-red-700">Report</button>
+                              <button
+                                onClick={() => openReportModal(item)}
+                                disabled={loading}
+                                className="bg-red-600 text-white px-2 py-1 rounded text-base hover:bg-red-700 disabled:opacity-50"
+                              >
+                                Report
+                              </button>
                             </div>
                           )}
                         </td>
@@ -1020,6 +1175,15 @@ const PurchaseProcessing = () => {
                     value={purchaseForm.total}
                     readOnly
                     className="w-full p-2 border border-gray-300 rounded bg-gray-100"
+                  />
+                </div>
+                <div className="mb-4" style={{ display: 'none' }}>
+                  <label className="block text-sm font-medium mb-1">Description</label>
+                  <textarea
+                    value={purchaseForm.description}
+                    onChange={(e) => setPurchaseForm({ ...purchaseForm, description: e.target.value })}
+                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows="3"
                   />
                 </div>
                 <div className="flex justify-end space-x-2">
@@ -1119,59 +1283,93 @@ const PurchaseProcessing = () => {
           </div>
         )}
 
-        {/* Modal for Receive Order */}
-        {showReceiveModal && selectedItem && (
+        {/* Modal for Details */}
+        {showDetailsModal && selectedDetailsRequest && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-              <h3 className="text-xl font-semibold mb-4">Receive Order</h3>
-              <p className="mb-4"><strong>Item Name:</strong> {selectedItem.item_name}</p>
-              <p className="mb-4"><strong>Quantity:</strong> {selectedItem.quantity}</p>
-              <form onSubmit={handleSubmitReceive}>
+              <h3 className="text-xl font-semibold mb-4">Request Details</h3>
+              <p className="mb-4"><strong>Item Name:</strong> {selectedDetailsRequest.item_name}</p>
+              <p className="mb-4"><strong>Description:</strong> {selectedDetailsRequest.description || 'No description available'}</p>
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={closeDetailsModal}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal for Received Order Details */}
+        {showReceivedDetailsModal && selectedReceivedOrder && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto">
+              <h3 className="text-xl font-semibold mb-4">Supplier Contact</h3>
+              <div className="space-y-2">
+                <p><strong>Supplier Email:</strong> {selectedReceivedOrder.supplier_email || 'N/A'}</p>
+                <p><strong>Supplier Phone:</strong> {selectedReceivedOrder.supplier_phone || 'N/A'}</p>
+                <p><strong>Supplier Address:</strong> {selectedReceivedOrder.supplier_address || 'N/A'}</p>
+                <p><strong>Supplier Website:</strong> {selectedReceivedOrder.supplier_website || 'N/A'}</p>
+              </div>
+              <div className="flex justify-end space-x-2 mt-4">
+                <button
+                  type="button"
+                  onClick={closeReceivedDetailsModal}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal for Report */}
+        {showReportModal && selectedReportItem && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md max-h-[80vh] overflow-y-auto">
+              <h3 className="text-xl font-semibold mb-4">Report Issue</h3>
+              <p className="mb-4"><strong>Item:</strong> {selectedReportItem.item_name}</p>
+              <p className="mb-4"><strong>Quantity:</strong> {selectedReportItem.quantity}</p>
+              <form onSubmit={handleSubmitReport} encType="multipart/form-data">
                 <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">Receiver Name</label>
-                  <input
-                    type="text"
-                    value={receiverName}
-                    onChange={(e) => setReceiverName(e.target.value)}
+                  <label className="block text-sm font-medium mb-1">Description *</label>
+                  <textarea
+                    value={reportForm.description}
+                    onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })}
                     required
-                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+                    rows="4"
+                    placeholder="Describe the issue with this order item..."
                   />
                 </div>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">Photo</label>
+                  <label className="block text-sm font-medium mb-1">Photo Proof (Optional)</label>
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={handleFileChange}
-                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    multiple
+                    onChange={(e) => setReportForm({ ...reportForm, photos: e.target.files ? Array.from(e.target.files) : [] })}
+                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
-                  {picture && (
-                    <div className="mb-4">
-                      <img src={picture} alt="Selected" className="w-full border border-gray-300 rounded" />
-                      <button
-                        type="button"
-                        onClick={() => setPicture(null)}
-                        className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                      >
-                        Remove Photo
-                      </button>
-                    </div>
-                  )}
                 </div>
                 <div className="flex justify-end space-x-2">
                   <button
                     type="button"
-                    onClick={closeReceiveModal}
+                    onClick={closeReportModal}
                     className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    disabled={loading || !receiverName || !picture}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                    disabled={loading}
+                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
                   >
-                    {loading ? 'Receiving...' : 'Receive Order'}
+                    {loading ? 'Submitting...' : 'Submit Report'}
                   </button>
                 </div>
               </form>
@@ -1179,6 +1377,81 @@ const PurchaseProcessing = () => {
           </div>
         )}
 
+        {/* Modal for Report Details */}
+        {showReportDetailsModal && selectedReportDetails && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto">
+              <h3 className="text-xl font-semibold mb-4">Report Details</h3>
+              <div className="space-y-4">
+                <p><strong>Report Description:</strong> {selectedReportDetails.report_description}</p>
+                <p><strong>Supplier Email:</strong> {selectedReportDetails.supplier_email || 'N/A'}</p>
+                <p><strong>Supplier Phone:</strong> {selectedReportDetails.supplier_phone || 'N/A'}</p>
+                <p><strong>Supplier Address:</strong> {selectedReportDetails.supplier_address || 'N/A'}</p>
+                <p><strong>Supplier Website:</strong> {selectedReportDetails.supplier_website || 'N/A'}</p>
+                <p><strong>Delivery Date:</strong> {new Date(selectedReportDetails.delivery_date).toLocaleString('en-US', { timeZone: 'Asia/Manila' })}</p>
+                {selectedReportDetails.proof_report && (
+                  <div className="mt-4">
+                    <strong>Proof Photos:</strong>
+                    {(() => {
+                      try {
+                        const photos = JSON.parse(selectedReportDetails.proof_report);
+                        if (Array.isArray(photos)) {
+                          return photos.map((filename, index) => (
+                            <img
+                              key={index}
+                              src={`${logisticsI.backend.uri}/storage/proof_reports/${filename}`}
+                              alt={`Proof ${index + 1}`}
+                              className="max-w-full h-auto mt-2 border rounded cursor-pointer"
+                              onClick={() => {
+                                setZoomedImageSrc(`${logisticsI.backend.uri}/storage/proof_reports/${filename}`);
+                                setShowZoomedImage(true);
+                              }}
+                            />
+                          ));
+                        } else {
+                          return (
+                            <img
+                              src={`${logisticsI.backend.uri}/storage/proof_reports/${photos}`}
+                              alt="Proof"
+                              className="max-w-full h-auto mt-2 border rounded cursor-pointer"
+                              onClick={() => {
+                                setZoomedImageSrc(`${logisticsI.backend.uri}/storage/proof_reports/${photos}`);
+                                setShowZoomedImage(true);
+                              }}
+                            />
+                          );
+                        }
+                      } catch (e) {
+                        return <p>Invalid proof data</p>;
+                      }
+                    })()}
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end space-x-2 mt-4">
+                <button
+                  type="button"
+                  onClick={closeReportDetailsModal}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal for Zoomed Image */}
+        {showZoomedImage && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" onClick={() => setShowZoomedImage(false)}>
+            <img
+              src={zoomedImageSrc}
+              alt="Zoomed Proof"
+              className="max-w-full max-h-full object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
 
       </div>
     </div>

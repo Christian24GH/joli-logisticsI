@@ -103,11 +103,7 @@ export const logisticsI = {
             receivedOrderUpdate: `${backendUri}/api/received-orders/{id}`,
             receivedOrderArchive: `${backendUri}/api/received-orders/{id}/archive`,
 
-            // Cancel Orders Routes
-            cancelOrders: `${backendUri}/api/cancel-orders`,
-            cancelOrderAdd: `${backendUri}/api/cancel-orders`,
-            cancelOrderUpdate: `${backendUri}/api/cancel-orders/{id}`,
-            cancelOrderArchive: `${backendUri}/api/cancel-orders/{id}/archive`,
+
 
             // Expense Records Routes
             expenseRecords: `${backendUri}/api/expenses`,

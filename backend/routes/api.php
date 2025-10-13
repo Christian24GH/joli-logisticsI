@@ -130,13 +130,7 @@ Route::put('/received-orders/{id}', [PSMController::class, 'updateReceivedOrder'
 Route::get('/received-orders', [PSMController::class, 'getAllReceivedOrders']);  // Get all received orders
 Route::put('/received-orders/{id}/archive', [PSMController::class, 'archiveReceivedOrder']);  // Archive received order
 
-// ================================
-// Cancel Orders Routes
-// ================================
-Route::post('/cancel-orders', [PSMController::class, 'addCancelOrder']);  // Add cancel order
-Route::put('/cancel-orders/{id}', [PSMController::class, 'updateCancelOrder']);  // Update cancel order
-Route::get('/cancel-orders', [PSMController::class, 'getAllCancelOrders']);  // Get all cancel orders
-Route::put('/cancel-orders/{id}/archive', [PSMController::class, 'archiveCancelOrder']);  // Archive cancel order
+
 
 // ================================
 // Expense Records Routes

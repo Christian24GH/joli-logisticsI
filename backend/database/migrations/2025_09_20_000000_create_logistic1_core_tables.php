@@ -190,6 +190,7 @@ return new class extends Migration
         Schema::create('purchase_request', function (Blueprint $table) {
             $table->bigIncrements('request_id');
              $table->string('item_name', 100);
+            $table->text('description')->nullable();
             $table->integer('quantity');
             $table->decimal('price', 10, 2)->nullable();
             $table->decimal('total_price', 10, 2)->nullable();
@@ -202,6 +203,29 @@ return new class extends Migration
             $table->string('supplier_website', 255)->nullable();
             $table->timestamp('delivery_date')->nullable();
             $table->timestamps();
+        });
+
+        Schema::create('purchase_order', function (Blueprint $table) {
+            $table->bigIncrements('order_id');
+            $table->unsignedBigInteger('request_id');
+            $table->unsignedBigInteger('supplier_id');
+            $table->decimal('total_amount', 10, 2);
+            $table->enum('status', ['issued', 'completed', 'cancelled'])->default('issued');
+            $table->date('order_date');
+            $table->timestamps();
+
+            $table->foreign('request_id')->references('request_id')->on('purchase_request')->cascadeOnUpdate()->restrictOnDelete();
+            $table->foreign('supplier_id')->references('supplier_id')->on('supplier')->cascadeOnUpdate()->restrictOnDelete();
+        });
+
+        Schema::create('expense_record', function (Blueprint $table) {
+            $table->bigIncrements('expense_id');
+            $table->unsignedBigInteger('order_id');
+            $table->decimal('amount', 10, 2);
+            $table->enum('payment_status', ['unpaid', 'paid', 'partial'])->default('unpaid');
+            $table->timestamps();
+
+            $table->foreign('order_id')->references('order_id')->on('purchase_order')->cascadeOnUpdate()->restrictOnDelete();
         });
 
 
@@ -279,7 +303,8 @@ return new class extends Migration
             $table->string('supplier_email', 150)->nullable();
             $table->string('status', 50)->default('pending');
             $table->text('report_description')->nullable();
-            $table->string('proof_report', 255)->nullable();
+            $table->text('proof_report')->nullable(); // Changed to text to store JSON array of file paths
+            $table->string('reported_by', 100)->nullable();
             $table->timestamps();
 
             $table->foreign('order_item_id')->references('order_item_id')->on('order_items')->cascadeOnUpdate()->restrictOnDelete();
@@ -299,30 +324,12 @@ return new class extends Migration
             $table->string('supplier_email', 150)->nullable();
             $table->string('status', 50)->default('received');
             $table->string('received_by', 100)->nullable();
-            $table->string('picture', 255)->nullable();
             $table->timestamps();
 
             $table->foreign('order_item_id')->references('order_item_id')->on('order_items')->cascadeOnUpdate()->restrictOnDelete();
         });
 
-        Schema::create('cancel_orders', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->unsignedBigInteger('order_item_id');
-            $table->string('item_name', 100);
-            $table->integer('quantity');
-            $table->decimal('price_per_unit', 12, 2);
-            $table->decimal('total_price', 12, 2);
-            $table->string('supplier_website', 255)->nullable();
-            $table->string('supplier_address', 255)->nullable();
-            $table->string('supplier_phone', 64)->nullable();
-            $table->timestamp('delivery_date')->nullable();
-            $table->string('supplier_email', 150)->nullable();
-            $table->string('status', 50)->default('cancelled');
-            $table->text('cancel_description')->nullable();
-            $table->timestamps();
 
-            $table->foreign('order_item_id')->references('order_item_id')->on('order_items')->cascadeOnUpdate()->restrictOnDelete();
-        });
 
         // Insert sample data:
         // Seed core2_suppliers first 
@@ -529,6 +536,27 @@ return new class extends Migration
             'updated_at' => now()
         ]);
 
+        // Sample purchase order
+        $supplierId = DB::table('supplier')->where('supplier_name', 'StageGear PH')->first()->supplier_id;
+        $poId = DB::table('purchase_order')->insertGetId([
+            'request_id' => $prId,
+            'supplier_id' => $supplierId,
+            'total_amount' => 12000.00,
+            'status' => 'issued',
+            'order_date' => now(),
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+
+        // Sample expense record
+        DB::table('expense_record')->insert([
+            'order_id' => $poId,
+            'amount' => 12000.00,
+            'payment_status' => 'unpaid',
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+
 
 
         // Logistics report sample
@@ -616,6 +644,8 @@ return new class extends Migration
         Schema::dropIfExists('lowstock_request');
         Schema::dropIfExists('equipment_log');
         Schema::dropIfExists('logistics_report');
+        Schema::dropIfExists('expense_record');
+        Schema::dropIfExists('purchase_order');
         Schema::dropIfExists('purchase_request');
         Schema::dropIfExists('order_items');
         Schema::dropIfExists('maintenance');
