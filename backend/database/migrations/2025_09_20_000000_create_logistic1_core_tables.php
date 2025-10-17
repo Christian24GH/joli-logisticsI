@@ -218,18 +218,6 @@ return new class extends Migration
             $table->foreign('supplier_id')->references('supplier_id')->on('supplier')->cascadeOnUpdate()->restrictOnDelete();
         });
 
-        Schema::create('expense_record', function (Blueprint $table) {
-            $table->bigIncrements('expense_id');
-            $table->unsignedBigInteger('order_id');
-            $table->decimal('amount', 10, 2);
-            $table->enum('payment_status', ['unpaid', 'paid', 'partial'])->default('unpaid');
-            $table->timestamps();
-
-            $table->foreign('order_id')->references('order_id')->on('purchase_order')->cascadeOnUpdate()->restrictOnDelete();
-        });
-
-
-
         Schema::create('order_items', function (Blueprint $table) {
             $table->bigIncrements('order_item_id');
             $table->unsignedBigInteger('request_id');
@@ -242,10 +230,32 @@ return new class extends Migration
             $table->string('supplier_address')->nullable();
             $table->string('supplier_website')->nullable();
             $table->timestamp('delivery_date')->nullable();
-            $table->enum('status', ['received', 'reported', 'ongoing', 'cancel'])->default('ongoing');
+            $table->enum('status', ['received', 'reported', 'ongoing', 'cancel', 'waiting_replacement', 'waiting replacement', 'resolve'])->default('ongoing');
+            $table->text('cancellation_reason')->nullable();
+            $table->string('cancelled_by', 100)->nullable();
             $table->timestamps();
 
             $table->foreign('request_id')->references('request_id')->on('purchase_request')->cascadeOnUpdate()->restrictOnDelete();
+        });
+
+        Schema::create('expense_record', function (Blueprint $table) {
+            $table->bigIncrements('expense_id');
+            $table->unsignedBigInteger('order_item_id');
+            $table->decimal('amount', 10, 2);
+            $table->enum('payment_status', ['unpaid', 'paid', 'partial'])->default('unpaid');
+            $table->string('item_name', 100)->nullable();
+            $table->decimal('price', 10, 2)->nullable();
+            $table->timestamp('delivery_date')->nullable();
+            $table->enum('status', ['received', 'reported'])->nullable();
+            $table->string('supplier_email', 255)->nullable();
+            $table->string('supplier_phone', 50)->nullable();
+            $table->string('supplier_address', 255)->nullable();
+            $table->string('supplier_website', 255)->nullable();
+            $table->unsignedInteger('quantity')->nullable();
+            $table->unsignedBigInteger('request_id')->nullable();
+            $table->timestamps();
+
+            $table->foreign('order_item_id')->references('order_item_id')->on('order_items')->cascadeOnUpdate()->restrictOnDelete();
         });
 
         Schema::create('logistics_report', function (Blueprint $table) {
@@ -549,8 +559,24 @@ return new class extends Migration
         ]);
 
         // Sample expense record
+        $orderItemId = DB::table('order_items')->insertGetId([
+            'request_id' => $prId,
+            'item_name' => 'Stage LED Strip',
+            'quantity' => 10,
+            'price_per_unit' => 1200.00,
+            'total_price' => 12000.00,
+            'supplier_email' => 'contact@stagegear.ph',
+            'supplier_phone' => '+63-917-888-1212',
+            'supplier_address' => '101 Quezon Ave, QC',
+            'supplier_website' => 'https://stagegear.ph',
+            'delivery_date' => now()->addDays(7),
+            'status' => 'ongoing',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         DB::table('expense_record')->insert([
-            'order_id' => $poId,
+            'order_item_id' => $orderItemId,
             'amount' => 12000.00,
             'payment_status' => 'unpaid',
             'created_at' => now(),
@@ -637,7 +663,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('cancel_orders');
         Schema::dropIfExists('received_orders');
         Schema::dropIfExists('order_reports');
         Schema::dropIfExists('equipment_issues');

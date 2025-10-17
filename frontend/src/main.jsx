@@ -18,7 +18,7 @@ import Logistics1_StockMonitoringPage from './logistics1/StockMonitoring'
 import Logistics1_SupplierManagementPage from './logistics1/SupplierManagement'
 import Logistics1_PurchaseProcessingPage from './logistics1/PurchaseProcessing'
 import Logistics1_ExpenseRecordsPage from './logistics1/ExpenseRecords'
-import Logistics1_EquipmentSchedulingPage from './logistics1/EquipmentScheduling'
+import EquipmentScheduling from './logistics1/EquipmentScheduling.jsx'
 import Logistics1_DeliveryTransportTrackingPage from './logistics1/DeliveryTransportTracking'
 import Logistics1_TourReportsPage from './logistics1/TourReports'
 import Logistics1_AssetRegistrationPage from './logistics1/AssetRegistration'
@@ -47,7 +47,7 @@ createRoot(document.getElementById('root')).render(
             <Route path='SupplierManagement' element={<Logistics1_SupplierManagementPage/>}/>
             <Route path='PurchaseProcessing' element={<Logistics1_PurchaseProcessingPage/>}/>
             <Route path='ExpenseRecords' element={<Logistics1_ExpenseRecordsPage/>}/>
-            <Route path='EquipmentScheduling' element={<Logistics1_EquipmentSchedulingPage/>}/>
+            <Route path='EquipmentScheduling' element={<EquipmentScheduling/>}/>
             <Route path='DeliveryTransportTracking' element={<Logistics1_DeliveryTransportTrackingPage/>}/>
             <Route path='TourReports' element={<Logistics1_TourReportsPage/>}/>
             <Route path='AssetRegistration' element={<Logistics1_AssetRegistrationPage/>}/>

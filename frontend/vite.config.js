@@ -18,6 +18,12 @@ export default defineConfig(({mode})=>{
     server: {
       host: env.VITE_APP_HOST,
       port: env.VITE_APP_PORT,
+      cors: true,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
     },
     base: env.VITE_BASE_URL || '/'
   }

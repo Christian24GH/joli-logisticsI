@@ -90,6 +90,9 @@ export const logisticsI = {
             // Order Items Routes
             orderItems: `${backendUri}/api/order-items`,
             orderItemsAdd: `${backendUri}/api/order-items`,
+            orderItemCancel: `${backendUri}/api/order-items/{id}/cancel`,
+            orderItemReplacement: `${backendUri}/api/order-items/{id}/replacement`,
+            orderItemReplaceReceive: `${backendUri}/api/order-items/{id}/replace-receive`,
 
             // Order Reports Routes
             orderReports: `${backendUri}/api/order-reports`,
@@ -107,7 +110,7 @@ export const logisticsI = {
 
             // Expense Records Routes
             expenseRecords: `${backendUri}/api/expenses`,
-            expenseRecordAdd: `${backendUri}/api/expenses/add`,
+            expenseRecordAdd: `${backendUri}/api/expenses/{orderItemId}/amount`,
             expenseRecordUpdate: `${backendUri}/api/expenses/{id}`,
 
             // ================================

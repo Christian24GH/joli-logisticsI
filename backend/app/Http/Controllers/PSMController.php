@@ -152,7 +152,7 @@ class PSMController extends Controller
     {
         // Validate incoming data
         $validated = $request->validate([
-            'lowstock_id' => 'required|exists:lowstock_request,id',
+            'lowstock_id' => 'nullable|exists:lowstock_request,id',
             'item_name' => 'required|string|max:100',
             'description' => 'nullable|string',
             'quantity' => 'required|integer|min:1',
@@ -251,22 +251,44 @@ class PSMController extends Controller
     // ================================
 
     // 2.3.1 Record Purchase Amounts
-    public function recordPurchaseAmount(Request $request, $orderId)
+    public function recordPurchaseAmount(Request $request, $orderItemId)
     {
         // Validate incoming data
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0',
+            'item_name' => 'nullable|string|max:100',
+            'price' => 'nullable|numeric|min:0',
+            'delivery_date' => 'nullable|date_format:Y-m-d\TH:i',
+            'status' => 'nullable|in:received,reported',
+            // New optional fields for expense record to store order and supplier details
+            'supplier_email' => 'nullable|email|max:255',
+            'supplier_phone' => 'nullable|string|max:50',
+            'supplier_address' => 'nullable|string|max:255',
+            'supplier_website' => 'nullable|url|max:255',
+            'quantity' => 'nullable|integer|min:0',
+            'request_id' => 'nullable|integer|min:0',
         ]);
 
-        $existingOrder = DB::table('purchase_order')->where('order_id', $orderId)->first();
-        if (! $existingOrder) {
-            return response()->json(['error' => 'Purchase order not found'], 404);
+        $existingOrderItem = DB::table('order_items')->where('order_item_id', $orderItemId)->first();
+        if (! $existingOrderItem) {
+            return response()->json(['error' => 'Order item not found'], 404);
         }
 
         $id = DB::table('expense_record')->insertGetId([
-            'order_id' => $orderId,
+            'order_item_id' => $orderItemId,
             'amount' => $validated['amount'],
             'payment_status' => 'unpaid',  // Default status is unpaid
+            'item_name' => $validated['item_name'] ?? null,
+            'price' => $validated['price'] ?? null,
+            'delivery_date' => $validated['delivery_date'] ?? null,
+            'status' => $validated['status'] ?? null,
+            // Insert new fields if provided
+            'supplier_email' => $validated['supplier_email'] ?? null,
+            'supplier_phone' => $validated['supplier_phone'] ?? null,
+            'supplier_address' => $validated['supplier_address'] ?? null,
+            'supplier_website' => $validated['supplier_website'] ?? null,
+            'quantity' => $validated['quantity'] ?? null,
+            'request_id' => $validated['request_id'] ?? null,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -275,6 +297,8 @@ class PSMController extends Controller
 
         return response()->json(['message' => 'Purchase amount recorded successfully', 'expense_record' => $expenseRecord], 201);
     }
+
+
 
     // 2.3.2 Track Payment Status
     public function trackPaymentStatus(Request $request, $expenseId)
@@ -580,8 +604,7 @@ class PSMController extends Controller
     public function getOrderItems()
     {
         $orderItems = DB::table('order_items')
-            ->select('order_items.order_item_id', 'order_items.request_id', 'order_items.item_name', 'order_items.quantity', 'order_items.price_per_unit', 'order_items.total_price', 'order_items.supplier_email', 'order_items.supplier_phone', 'order_items.supplier_address', 'order_items.supplier_website', 'order_items.created_at', 'order_items.delivery_date', 'order_items.status', 'order_items.updated_at')
-            ->where('status', 'ongoing')
+            ->select('order_items.order_item_id', 'order_items.request_id', 'order_items.item_name', 'order_items.quantity', 'order_items.price_per_unit', 'order_items.total_price', 'order_items.supplier_name', 'order_items.supplier_email', 'order_items.supplier_phone', 'order_items.supplier_address', 'order_items.supplier_website', 'order_items.created_at', 'order_items.delivery_date', 'order_items.status', 'order_items.updated_at', 'order_items.cancellation_reason', 'order_items.cancelled_by', 'order_items.replacement_date', 'order_items.replaced_by')
             ->orderBy('delivery_date', 'desc')
             ->get();
         return response()->json($orderItems);
@@ -596,12 +619,14 @@ class PSMController extends Controller
             'quantity' => 'required|integer|min:1',
             'price_per_unit' => 'required|numeric|min:0',
             'total_price' => 'required|numeric|min:0',
+            'supplier_name' => 'nullable|string|max:100',
             'supplier_email' => 'nullable|email|max:150',
             'supplier_phone' => 'nullable|string|max:64',
             'supplier_address' => 'nullable|string|max:255',
             'supplier_website' => 'nullable|url|max:255',
             'delivery_date' => 'nullable|date_format:Y-m-d\TH:i',
             'status' => 'sometimes|in:received,reported,ongoing,cancel',
+            'ordered_by' => 'nullable|string|max:100',
         ]);
 
         $id = DB::table('order_items')->insertGetId([
@@ -610,12 +635,14 @@ class PSMController extends Controller
             'quantity' => $validated['quantity'],
             'price_per_unit' => $validated['price_per_unit'],
             'total_price' => $validated['total_price'],
+            'supplier_name' => $validated['supplier_name'] ?? null,
             'supplier_email' => $validated['supplier_email'] ?? null,
             'supplier_phone' => $validated['supplier_phone'] ?? null,
             'supplier_address' => $validated['supplier_address'] ?? null,
             'supplier_website' => $validated['supplier_website'] ?? null,
             'delivery_date' => $validated['delivery_date'] ?? null,
             'status' => $validated['status'] ?? 'ongoing',
+            'ordered_by' => $validated['ordered_by'] ?? null,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -672,6 +699,113 @@ class PSMController extends Controller
         return response()->json(['message' => 'Order item deleted successfully']);
     }
 
+    // Cancel order item
+    public function cancelOrderItem(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string|max:500',
+            'cancelled_by' => 'required|string|max:100',
+        ]);
+
+        $existing = DB::table('order_items')->where('order_item_id', $id)->first();
+        if (! $existing) {
+            return response()->json(['error' => 'Order item not found'], 404);
+        }
+
+        DB::table('order_items')->where('order_item_id', $id)->update([
+            'status' => 'cancel',
+            'cancellation_reason' => $validated['reason'],
+            'cancelled_by' => $validated['cancelled_by'],
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['message' => 'Order item cancelled successfully']);
+    }
+
+    // Schedule replacement
+    public function scheduleReplacement(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'replacement_date' => 'required|date',
+            'replaced_by' => 'required|string|max:100',
+        ]);
+
+        $existing = DB::table('order_items')->where('order_item_id', $id)->first();
+        if (! $existing) {
+            return response()->json(['error' => 'Order item not found'], 404);
+        }
+
+        try {
+            DB::table('order_items')->where('order_item_id', $id)->update([
+                'replacement_date' => $validated['replacement_date'],
+                'replaced_by' => $validated['replaced_by'],
+                'status' => 'waiting replacement',
+                'updated_at' => now(),
+            ]);
+
+            // Update order_reports status to 'Waiting Replacement' for this order_item_id
+            $updatedReports = DB::table('order_reports')
+                ->where('order_item_id', $id)
+                ->update([
+                    'status' => 'Waiting Replacement',
+                    'updated_at' => now(),
+                ]);
+
+            $message = 'Replacement scheduled successfully';
+            if ($updatedReports > 0) {
+                $message .= ' and order report status set to Waiting Replacement';
+            }
+
+            return response()->json(['message' => $message]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to schedule replacement: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // Handle replace receive (for items with waiting_replacement status)
+    public function handleReplaceReceive(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'receiver_name' => 'required|string|max:100',
+        ]);
+
+        $existing = DB::table('order_items')->where('order_item_id', $id)->first();
+        if (! $existing) {
+            return response()->json(['error' => 'Order item not found'], 404);
+        }
+
+        if ($existing->status !== 'waiting replacement') {
+            return response()->json(['error' => 'Order item must have waiting replacement status'], 400);
+        }
+
+        try {
+            // 1. Update order_items status to 'resolve'
+            DB::table('order_items')->where('order_item_id', $id)->update([
+                'status' => 'resolve',
+                'updated_at' => now(),
+            ]);
+
+            // 2. Update order_reports status to 'resolve' for this order_item_id
+            $updatedReports = DB::table('order_reports')
+                ->where('order_item_id', $id)
+                ->update([
+                    'status' => 'resolve',
+                    'updated_at' => now(),
+                ]);
+
+            $message = 'Replacement received successfully';
+            $message .= ', order item status set to resolve';
+            if ($updatedReports > 0) {
+                $message .= ', order report status set to resolve';
+            }
+            // Removed: creation of received order record
+
+            return response()->json(['message' => $message]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to process replacement receive: ' . $e->getMessage()], 500);
+        }
+    }
+
     // ================================
     // Order Reports Management
     // ================================
@@ -685,6 +819,7 @@ class PSMController extends Controller
             'quantity' => 'required|integer|min:1',
             'price_per_unit' => 'required|numeric|min:0',
             'total_price' => 'required|numeric|min:0',
+            'supplier_name' => 'nullable|string|max:100',
             'supplier_website' => 'nullable|url|max:255',
             'supplier_address' => 'nullable|string|max:255',
             'supplier_phone' => 'nullable|string|max:64',
@@ -838,6 +973,40 @@ class PSMController extends Controller
             'updated_at' => now(),
         ]);
 
+        // Record expense
+        $existingOrderItem = DB::table('order_items')->where('order_item_id', $validated['order_item_id'])->first();
+        $expenseData = [
+            'amount' => $validated['total_price'],
+            'item_name' => $validated['item_name'],
+            'price' => $validated['price_per_unit'],
+            'delivery_date' => $validated['delivery_date'],
+            'status' => 'received',
+            'supplier_email' => $validated['supplier_email'],
+            'supplier_phone' => $validated['supplier_phone'],
+            'supplier_address' => $validated['supplier_address'],
+            'supplier_website' => $validated['supplier_website'],
+            'quantity' => $validated['quantity'],
+            'request_id' => $existingOrderItem->request_id ?? null,
+        ];
+
+        DB::table('expense_record')->insert([
+            'order_item_id' => $validated['order_item_id'],
+            'amount' => $expenseData['amount'],
+            'payment_status' => 'unpaid',
+            'item_name' => $expenseData['item_name'],
+            'price' => $expenseData['price'],
+            'delivery_date' => $expenseData['delivery_date'],
+            'status' => $expenseData['status'],
+            'supplier_email' => $expenseData['supplier_email'],
+            'supplier_phone' => $expenseData['supplier_phone'],
+            'supplier_address' => $expenseData['supplier_address'],
+            'supplier_website' => $expenseData['supplier_website'],
+            'quantity' => $expenseData['quantity'],
+            'request_id' => $expenseData['request_id'],
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         $receivedOrder = DB::table('received_orders')->where('id', $id)->first();
 
         return response()->json(['message' => 'Received order added successfully', 'received_order' => $receivedOrder], 201);
@@ -862,6 +1031,7 @@ class PSMController extends Controller
             'delivery_date' => 'nullable|date_format:Y-m-d\TH:i',
             'supplier_email' => 'nullable|email|max:150',
             'status' => 'sometimes|in:received,archived',
+            'report_issue' => 'sometimes|boolean',
         ]);
 
         DB::table('received_orders')->where('id', $id)->update(array_merge($validated, ['updated_at' => now()]));

@@ -2,6 +2,9 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
+// Apply CORS middleware to web routes including storage
+Route::middleware('cors')->group(function () {
+    Route::get('/', function () {
+        return view('welcome');
+    });
 });

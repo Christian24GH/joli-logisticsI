@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ProjectLogisticTrackerController extends Controller
-{
+{ 
     // ================================
     // Level 2 – Equipment Scheduling
     // ================================
@@ -17,20 +17,36 @@ class ProjectLogisticTrackerController extends Controller
         $data = $request->validate([
             'equipment_id' => 'required|exists:equipment,equipment_id',
             'project_id' => 'required|exists:tour_project,project_id',
-            'scheduled_date' => 'required|date',
-            'scheduled_time' => 'required|time',
+            'quantity' => 'required|integer|min:1',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+            'assigned_by' => 'nullable|string',
+            'status' => 'nullable|string',
         ]);
+
+        // For now, use start_date as scheduled_date since the table structure expects a single date
+        // In a real implementation, you might want to modify the table to have start_date and end_date
+        $scheduledDate = $data['start_date'];
 
         // Insert equipment schedule assignment
         $scheduleId = DB::table('equipment_schedule')->insertGetId([
             'equipment_id' => $data['equipment_id'],
             'project_id' => $data['project_id'],
-            'scheduled_date' => $data['scheduled_date'],
-            'scheduled_time' => $data['scheduled_time'],
+            'scheduled_date' => $scheduledDate,
+            'scheduled_time' => '08:00:00', // Default time or you can add scheduled_time field
             'approved' => false,  // Not approved yet
         ]);
 
-        return response()->json(['message' => 'Equipment assigned to tour successfully', 'schedule_id' => $scheduleId]);
+        return response()->json([
+            'message' => 'Equipment assigned to tour successfully',
+            'schedule_id' => $scheduleId,
+            'assignment_details' => [
+                'quantity' => $data['quantity'],
+                'start_date' => $data['start_date'],
+                'end_date' => $data['end_date'],
+                'assigned_by' => $data['assigned_by'] ?? 'System'
+            ]
+        ]);
     }
 
     // 3.1.2 Set Date & Time of Use

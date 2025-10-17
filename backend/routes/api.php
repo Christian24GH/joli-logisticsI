@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/test', fn()=> "LOG 1 API is working");
 
+// Apply CORS middleware to all API routes
+Route::middleware('cors')->group(function () {
+
 // ===========================
 // Smart Warehousing System (SWS)
 // ===========================
@@ -113,6 +116,9 @@ Route::get('/order-items', [PSMController::class, 'getOrderItems']);  // Get all
 Route::post('/order-items', [PSMController::class, 'createOrderItem']);  // Create order item
 Route::put('/order-items/{id}', [PSMController::class, 'updateOrderItem']);  // Update order item
 Route::delete('/order-items/{id}', [PSMController::class, 'deleteOrderItem']);  // Delete order item
+Route::put('/order-items/{id}/cancel', [PSMController::class, 'cancelOrderItem']);  // Cancel order item
+Route::put('/order-items/{id}/replacement', [PSMController::class, 'scheduleReplacement']);  // Schedule replacement
+Route::put('/order-items/{id}/replace-receive', [PSMController::class, 'handleReplaceReceive']);  // Handle replace receive
 
 // ================================
 // Order Reports Routes
@@ -134,10 +140,10 @@ Route::put('/received-orders/{id}/archive', [PSMController::class, 'archiveRecei
 
 // ================================
 // Expense Records Routes
-// ================================ 
+// ================================
 
 // 2.3.1 Record Purchase Amounts
-Route::post('/expenses/{orderId}/amount', [PSMController::class, 'recordPurchaseAmount']);  // Record Purchase Amount
+Route::post('/expenses/{orderItemId}/amount', [PSMController::class, 'recordPurchaseAmount']);  // Record Purchase Amount
 // 2.3.2 Track Payment Status
 Route::put('/expenses/{expenseId}/status', [PSMController::class, 'trackPaymentStatus']);  // Track Payment Status
 // 2.3.3 Export Expense Reports
@@ -241,7 +247,7 @@ Route::put('/logistics-reports/{id}', [DTRSController::class, 'updateLogisticsRe
 Route::get('/fleet-documents', [DTRSController::class, 'getFleetDocuments']);  // Get all fleet documents
 Route::put('/fleet-documents/{id}', [DTRSController::class, 'updateFleetDocument']);  // Update fleet document
 
-// QR Code APIs (Frontend Sync)
-Route::get('/assets', [DTRSController::class, 'getAssets']);  // Get all assets
-Route::get('/assets/{token}', [DTRSController::class, 'getAssetByToken']);  // Get asset by QR token
- 
+    // QR Code APIs (Frontend Sync)
+    Route::get('/assets', [DTRSController::class, 'getAssets']);  // Get all assets
+    Route::get('/assets/{token}', [DTRSController::class, 'getAssetByToken']);  // Get asset by QR token
+});
